@@ -1,0 +1,93 @@
+// Small format helpers shared across components.
+
+export function fmtTemp(t: number | undefined | null): string {
+  if (t === undefined || t === null || Number.isNaN(t)) return '—';
+  return `${Math.round(t)}°`;
+}
+
+export function fmtMph(v: number | undefined | null): string {
+  if (v === undefined || v === null || Number.isNaN(v)) return '—';
+  return `${Math.round(v)}mph`;
+}
+
+export function fmtPct(v: number | undefined | null): string {
+  if (v === undefined || v === null || Number.isNaN(v)) return '—';
+  return `${Math.round(v)}%`;
+}
+
+export function fmtHourLocal(iso: string, timezone?: string): string {
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    timeZone: timezone,
+  })
+    .format(d)
+    .toLowerCase()
+    .replace(' ', '');
+}
+
+export function fmtDayShort(iso: string, timezone?: string): string {
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    timeZone: timezone,
+  }).format(d);
+}
+
+export function fmtDateShort(iso: string, timezone?: string): string {
+  const d = new Date(iso);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: timezone,
+  }).format(d);
+}
+
+// Map a temperature in F to a color from the gradient.
+export function tempColor(t: number): string {
+  // Stops: 20 cold, 40 cool, 60 mild, 75 warm, 88 hot, 100 very hot.
+  const stops: [number, string][] = [
+    [20, '#3b82f6'],
+    [40, '#06b6d4'],
+    [60, '#84cc16'],
+    [75, '#eab308'],
+    [88, '#f97316'],
+    [100, '#ef4444'],
+  ];
+  if (t <= stops[0][0]) return stops[0][1];
+  if (t >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
+  for (let i = 0; i < stops.length - 1; i++) {
+    const [a, ca] = stops[i];
+    const [b, cb] = stops[i + 1];
+    if (t >= a && t <= b) {
+      const k = (t - a) / (b - a);
+      return mixHex(ca, cb, k);
+    }
+  }
+  return stops[2][1];
+}
+
+function mixHex(a: string, b: string, k: number): string {
+  const pa = parseInt(a.slice(1), 16);
+  const pb = parseInt(b.slice(1), 16);
+  const ar = (pa >> 16) & 255;
+  const ag = (pa >> 8) & 255;
+  const ab = pa & 255;
+  const br = (pb >> 16) & 255;
+  const bg = (pb >> 8) & 255;
+  const bb = pb & 255;
+  const r = Math.round(ar + (br - ar) * k);
+  const g = Math.round(ag + (bg - ag) * k);
+  const bl = Math.round(ab + (bb - ab) * k);
+  return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
+}
+
+export function isSameLocalDay(aIso: string, bIso: string, timezone?: string): boolean {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: timezone,
+  });
+  return fmt.format(new Date(aIso)) === fmt.format(new Date(bIso));
+}
