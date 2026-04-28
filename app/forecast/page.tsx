@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import ComingUpTimeline from '@/components/ComingUpTimeline';
+import HourlyBars from '@/components/HourlyBars';
 import HourlyStrip from '@/components/HourlyStrip';
 import InlineRadar from '@/components/InlineRadar';
 import MetricCard from '@/components/MetricCard';
@@ -167,7 +167,7 @@ export default function ForecastPage() {
         </div>
         <div className="text-base">{comingUpSentence(gfs)}</div>
         <div className="mt-3">
-          <ComingUpTimeline forecast={gfs} />
+          <HourlyBars forecast={gfs} height={36} />
         </div>
       </section>
 
