@@ -1,12 +1,25 @@
 // Playability: 0-100 score for whether you should be on the course.
 // Tweak CONFIG to taste.
 export const CONFIG = {
-  TEMP_LOW_PENALTY_BELOW: 50,
-  TEMP_HIGH_PENALTY_ABOVE: 90,
-  WIND_PENALTY_ABOVE: 10,
+  // Temperature comfort window (feels-like)
+  TEMP_IDEAL_LOW: 67,
+  TEMP_IDEAL_HIGH: 79,
+  TEMP_BELOW_IDEAL_MULT: 2.5, // each degree below 67 costs 2.5
+  TEMP_ABOVE_IDEAL_MULT: 1.8, // each degree above 79 costs 1.8
+  TEMP_COLD_CLIFF: 50, // additional -10 below this
+  TEMP_MISERABLE_CLIFF: 40, // additional -15 below this
+  TEMP_HOT_CLIFF: 90, // additional -10 above this
+
+  // Wind
+  WIND_PENALTY_ABOVE: 10, // -1 per mph above 10
+  WIND_HEAVY_ABOVE: 15, // additional -1 per mph above 15
   GUST_DELTA_PENALTY_ABOVE: 8,
   GUST_DELTA_MULTIPLIER: 1.5,
+
+  // Precipitation
   PRECIP_MULTIPLIER: 0.8,
+
+  // Dew point
   DEW_POINT_SOUP: 70,
   DEW_POINT_MISERABLE: 75,
   DEW_POINT_DRY_COLD: 30,
@@ -31,16 +44,23 @@ export type PlayabilityResult = {
 export function playability(i: PlayabilityInputs): PlayabilityResult {
   let score = 100;
 
-  // Temp pain on either end.
-  if (i.apparent_temp < CONFIG.TEMP_LOW_PENALTY_BELOW) {
-    score -= (CONFIG.TEMP_LOW_PENALTY_BELOW - i.apparent_temp) * 2;
-  } else if (i.apparent_temp > CONFIG.TEMP_HIGH_PENALTY_ABOVE) {
-    score -= (i.apparent_temp - CONFIG.TEMP_HIGH_PENALTY_ABOVE) * 2;
+  // Temperature: penalize against an ideal feels-like window of 67-79°F,
+  // with steeper cliffs at the cold and hot extremes.
+  if (i.apparent_temp < CONFIG.TEMP_IDEAL_LOW) {
+    score -= (CONFIG.TEMP_IDEAL_LOW - i.apparent_temp) * CONFIG.TEMP_BELOW_IDEAL_MULT;
+    if (i.apparent_temp < CONFIG.TEMP_COLD_CLIFF) score -= 10;
+    if (i.apparent_temp < CONFIG.TEMP_MISERABLE_CLIFF) score -= 15;
+  } else if (i.apparent_temp > CONFIG.TEMP_IDEAL_HIGH) {
+    score -= (i.apparent_temp - CONFIG.TEMP_IDEAL_HIGH) * CONFIG.TEMP_ABOVE_IDEAL_MULT;
+    if (i.apparent_temp > CONFIG.TEMP_HOT_CLIFF) score -= 10;
   }
 
-  // Wind: penalize anything over the threshold by mph.
+  // Wind: -1 per mph above 10, doubling above 15 (additional -1 per mph above 15).
   if (i.wind_speed > CONFIG.WIND_PENALTY_ABOVE) {
-    score -= i.wind_speed;
+    score -= i.wind_speed - CONFIG.WIND_PENALTY_ABOVE;
+  }
+  if (i.wind_speed > CONFIG.WIND_HEAVY_ABOVE) {
+    score -= i.wind_speed - CONFIG.WIND_HEAVY_ABOVE;
   }
 
   // Gust delta: gusty days play worse than steady winds.
@@ -76,3 +96,23 @@ function labelFor(score: number): { label: string; color: string } {
   if (score >= 20) return { label: 'Rough', color: '#f97316' };
   return { label: "Don't bother", color: '#ef4444' };
 }
+
+/*
+Sanity check — actual computed scores under the formulas above
+(humidity defaulted to 50, gusts default to wind when not specified):
+
+  73°F feels, 5mph wind,                    0% precip, 55° dew → 100  ("Send it")    | spec ~100
+  67°F feels, 8mph wind,                    0% precip, 50° dew → 100  ("Send it")    | spec ~100
+  60°F feels, 10mph wind,                   0% precip, 50° dew →  83  ("Send it")    | spec  ~82
+  55°F feels, 12mph wind,                   0% precip, 50° dew →  68  ("Playable")   | spec  ~68
+  46°F feels, 19mph wind, 32mph gusts,      0% precip, 42° dew →   5  ("Don't bother")| spec  ~25
+  85°F feels, 8mph wind,                    0% precip, 65° dew →  89  ("Send it")    | spec  ~89
+  92°F feels, 6mph wind,                    0% precip, 72° dew →  53  ("Grinding")   | spec  ~55
+
+Six of seven land within ~3 of the spec's expected. Case 5 lands harsher
+because the 13mph gust delta + cold cliff + doubled-above-15 wind stack on
+top of an already-cold base. If 5 feels too punitive, the easiest dial is
+GUST_DELTA_MULTIPLIER (try 1.0) or apply (gust_delta - threshold) instead
+of full delta — both pull case 5 closer to ~25 without affecting the
+others.
+*/
