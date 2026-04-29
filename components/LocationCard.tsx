@@ -10,8 +10,7 @@ import { playability } from '@/lib/playability';
 import { setSelectedId, setLocationElevation } from '@/lib/locations';
 import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
-import { carryMultiplier, playsColor, playsLabel, playsYards } from '@/lib/airDensity';
-import ClubWindLine from './ClubWindLine';
+import GolfCard from './GolfCard';
 import HourlyBars from './HourlyBars';
 import PressureTrendLine from './PressureTrendLine';
 
@@ -142,7 +141,6 @@ export default function LocationCard({ loc, onRemove }: Props) {
           <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
             From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
           </div>
-          <ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />
           <PressureTrendLine forecast={data} />
         </div>
         <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
@@ -167,45 +165,41 @@ export default function LocationCard({ loc, onRemove }: Props) {
         <HourlyBars forecast={data} height={28} />
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span
-          className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
-          style={{ background: score.color }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label}
-        </span>
-        {(() => {
-          // Pick the hourly slot that brackets "now" so we read pressure from
-          // roughly the current hour, not whatever's at index 0 (which may be
-          // 6 hours ago thanks to past_hours).
-          const nowMs = Date.now();
-          let pIdx = 0;
-          for (let i = 0; i < data.hourly.time.length; i++) {
-            if (new Date(data.hourly.time[i]).getTime() >= nowMs) {
-              pIdx = Math.max(0, i - 1);
-              break;
-            }
-          }
-          const inputs = {
-            apparent_temp_f: c.apparent_temperature,
-            elevation_ft: loc.elevation_ft ?? Math.round(data.elevation * 3.28084),
-            surface_pressure_hpa: data.hourly.surface_pressure?.[pIdx] ?? 1013,
-            relative_humidity: c.relative_humidity_2m,
-          };
-          const yds = playsYards(carryMultiplier(inputs));
-          if (Math.abs(yds) < 2) return null;
-          const color = playsColor(yds);
-          return (
-            <span
-              className="text-xs font-medium"
-              style={color ? { color } : undefined}
-            >
-              🎯 {playsLabel(yds)}
-            </span>
-          );
-        })()}
+      <div className="mt-4">
+        <GolfCard
+          compact
+          playability={score}
+          windSpeed={c.wind_speed_10m}
+          gusts={c.wind_gusts_10m}
+          airInputs={airInputsForCurrent(data, loc, c.apparent_temperature, c.relative_humidity_2m)}
+        />
       </div>
     </div>
   );
+}
+
+// Resolve the air-density inputs for "now" — pulls surface_pressure from the
+// hourly slot that brackets the current time so past_hours doesn't pollute
+// the value.
+function airInputsForCurrent(
+  data: Forecast,
+  loc: Location,
+  apparent: number,
+  humidity: number,
+) {
+  const nowMs = Date.now();
+  let pIdx = 0;
+  for (let i = 0; i < data.hourly.time.length; i++) {
+    if (new Date(data.hourly.time[i]).getTime() >= nowMs) {
+      pIdx = Math.max(0, i - 1);
+      break;
+    }
+  }
+  return {
+    apparent_temp_f: apparent,
+    elevation_ft: loc.elevation_ft ?? Math.round(data.elevation * 3.28084),
+    surface_pressure_hpa: data.hourly.surface_pressure?.[pIdx] ?? 1013,
+    relative_humidity: humidity,
+  };
 }
 

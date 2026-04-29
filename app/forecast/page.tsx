@@ -6,8 +6,7 @@ import HourlyBars from '@/components/HourlyBars';
 import HourlyStrip from '@/components/HourlyStrip';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
-import AirDensityCard from '@/components/AirDensityCard';
-import ClubWindLine from '@/components/ClubWindLine';
+import GolfCard from '@/components/GolfCard';
 import MetricCard from '@/components/MetricCard';
 import PressureTrendLine from '@/components/PressureTrendLine';
 import MinutelyChart from '@/components/MinutelyChart';
@@ -126,13 +125,6 @@ export default function ForecastPage() {
             </div>
           </div>
         </div>
-        <div
-          className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
-          style={{ background: score.color }}
-        >
-          <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label} · {score.score}
-        </div>
-
         <div className="mt-4 grid grid-cols-2 gap-2">
           <MetricCard
             label="Wind"
@@ -142,12 +134,7 @@ export default function ForecastPage() {
               </span>
             }
             sub={`From the ${windCardinal(c.wind_direction_10m)}. Gusts to ${Math.round(c.wind_gusts_10m)}mph.`}
-            footer={
-              <>
-                <ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />
-                <PressureTrendLine forecast={gfs} />
-              </>
-            }
+            footer={<PressureTrendLine forecast={gfs} />}
           />
           {dewExtreme ? (
             <MetricCard
@@ -164,8 +151,11 @@ export default function ForecastPage() {
           )}
         </div>
         <div className="mt-2">
-          <AirDensityCard
-            inputs={{
+          <GolfCard
+            playability={score}
+            windSpeed={c.wind_speed_10m}
+            gusts={c.wind_gusts_10m}
+            airInputs={{
               apparent_temp_f: c.apparent_temperature,
               elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
               surface_pressure_hpa: currentSurfacePressure(gfs),
