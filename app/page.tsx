@@ -1,12 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import CurrentLocationButton from '@/components/CurrentLocationButton';
 import LocationCard from '@/components/LocationCard';
 import LocationSearch from '@/components/LocationSearch';
+import { reverseGeocode } from '@/lib/api';
 import {
   addLocation,
   loadLocations,
   removeLocation as removeLoc,
+  setCurrentLocation,
 } from '@/lib/locations';
 import type { Location } from '@/lib/types';
 
@@ -15,7 +18,28 @@ export default function LocationsPage() {
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
 
   useEffect(() => {
-    setLocations(loadLocations());
+    const initial = loadLocations();
+    setLocations(initial);
+
+    // Refresh the current location's coordinates on every app load so weather
+    // follows the user as they move. We don't trust cached lat/lon.
+    const current = initial.find((l) => l.isCurrent);
+    if (current && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const name = await reverseGeocode(lat, lon);
+          setLocations(setCurrentLocation({ lat, lon, name }));
+          setUpdatedAt(new Date());
+        },
+        () => {
+          // Permission denied or unavailable — keep stale coords; user can disable
+          // by removing the card.
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
+      );
+    }
   }, []);
 
   function handleAdd(loc: Omit<Location, 'id'>) {
@@ -27,10 +51,19 @@ export default function LocationsPage() {
     setLocations(removeLoc(id));
   }
 
+  const hasCurrent = locations.some((l) => l.isCurrent);
+
   return (
     <div className="px-4 pt-6">
       <h1 className="text-2xl font-bold">Locations</h1>
-      <div className="mt-4">
+      <div className="mt-4 space-y-2">
+        <CurrentLocationButton
+          hasCurrent={hasCurrent}
+          onSet={(next) => {
+            setLocations(next);
+            setUpdatedAt(new Date());
+          }}
+        />
         <LocationSearch onAdd={handleAdd} />
       </div>
       <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">

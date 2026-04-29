@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import HourlyBars from '@/components/HourlyBars';
 import HourlyStrip from '@/components/HourlyStrip';
+import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
+import ClubWindLine from '@/components/ClubWindLine';
 import MetricCard from '@/components/MetricCard';
 import MinutelyChart from '@/components/MinutelyChart';
 import ModelAgreement from '@/components/ModelAgreement';
@@ -135,6 +137,7 @@ export default function ForecastPage() {
               </span>
             }
             sub={`From the ${windCardinal(c.wind_direction_10m)}. Gusts to ${Math.round(c.wind_gusts_10m)}mph.`}
+            footer={<ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />}
           />
           {dewExtreme ? (
             <MetricCard
@@ -170,6 +173,8 @@ export default function ForecastPage() {
           <HourlyBars forecast={gfs} height={36} />
         </div>
       </section>
+
+      <WearAdvicePanel forecast={gfs} />
 
       {gfs.minutely_15 && (
         <MinutelyChart minutely={gfs.minutely_15} timezone={gfs.timezone} />

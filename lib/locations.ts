@@ -15,6 +15,14 @@ function isBrowser(): boolean {
   return typeof window !== 'undefined';
 }
 
+function sortCurrentFirst(locations: Location[]): Location[] {
+  // The "current location" entry always pins to the top of the list,
+  // regardless of insertion order.
+  return [...locations].sort(
+    (a, b) => Number(b.isCurrent ?? false) - Number(a.isCurrent ?? false),
+  );
+}
+
 export function loadLocations(): Location[] {
   if (!isBrowser()) return DEFAULT_LOCATIONS;
   try {
@@ -25,7 +33,7 @@ export function loadLocations(): Location[] {
     }
     const parsed = JSON.parse(raw) as Location[];
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_LOCATIONS;
-    return parsed;
+    return sortCurrentFirst(parsed);
   } catch {
     return DEFAULT_LOCATIONS;
   }
@@ -33,7 +41,31 @@ export function loadLocations(): Location[] {
 
 export function saveLocations(locations: Location[]): void {
   if (!isBrowser()) return;
-  window.localStorage.setItem(LOCATIONS_KEY, JSON.stringify(locations));
+  window.localStorage.setItem(LOCATIONS_KEY, JSON.stringify(sortCurrentFirst(locations)));
+}
+
+export const CURRENT_LOCATION_ID = 'current';
+
+export function setCurrentLocation(coords: {
+  lat: number;
+  lon: number;
+  name?: string | null;
+}): Location[] {
+  const existing = loadLocations().filter((l) => l.id !== CURRENT_LOCATION_ID);
+  const current: Location = {
+    id: CURRENT_LOCATION_ID,
+    name: coords.name && coords.name.trim() ? coords.name.trim() : 'Current Location',
+    lat: coords.lat,
+    lon: coords.lon,
+    isCurrent: true,
+  };
+  const next = [current, ...existing];
+  saveLocations(next);
+  return next;
+}
+
+export function hasCurrentLocation(): boolean {
+  return loadLocations().some((l) => l.isCurrent);
 }
 
 export function addLocation(loc: Omit<Location, 'id'> & { id?: string }): Location[] {

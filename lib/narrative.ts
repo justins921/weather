@@ -1,4 +1,5 @@
 // Rules-based narrative generator. No LLM. Edit the strings to taste.
+import { clubsForWind, formatClubs } from './clubWind';
 import type { Forecast } from './types';
 import { weatherLabel } from './weatherCodes';
 
@@ -64,7 +65,10 @@ export function comingUpSentence(f: Forecast): string {
     }
   }
   if (peakWind - baselineWind >= 8) {
-    return `Winds picking up to ${Math.round(peakWind)}mph by ${fmtHour(times[peakWindIdx], tz)}.`;
+    // Mention club-wind only when the peak is meaningful (>= 11mph maps to 1.5+ clubs).
+    const clubs = peakWind >= 11 ? formatClubs(clubsForWind(peakWind)).toLowerCase() : null;
+    const clubPart = clubs ? ` (${clubs})` : '';
+    return `Winds picking up to ${Math.round(peakWind)}mph${clubPart} by ${fmtHour(times[peakWindIdx], tz)}.`;
   }
 
   // 4. Temp swing: >20F over the 12h window.

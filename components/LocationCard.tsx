@@ -10,6 +10,7 @@ import { playability } from '@/lib/playability';
 import { setSelectedId } from '@/lib/locations';
 import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
+import ClubWindLine from './ClubWindLine';
 import HourlyBars from './HourlyBars';
 
 type Props = {
@@ -47,7 +48,7 @@ export default function LocationCard({ loc, onRemove }: Props) {
     return (
       <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{loc.name}</h2>
+          <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
           <button
             onClick={() => onRemove(loc.id)}
             className="text-fg-light/40 hover:text-fg-light/80 dark:text-fg-dark/40 dark:hover:text-fg-dark/80"
@@ -65,7 +66,7 @@ export default function LocationCard({ loc, onRemove }: Props) {
     return (
       <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{loc.name}</h2>
+          <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
         </div>
         <div className="mt-2 text-sm text-fg-light/50 dark:text-fg-dark/50">Loading…</div>
       </div>
@@ -95,7 +96,7 @@ export default function LocationCard({ loc, onRemove }: Props) {
       }}
     >
       <div className="flex items-start justify-between">
-        <h2 className="text-lg font-semibold">{loc.name}</h2>
+        <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -134,6 +135,7 @@ export default function LocationCard({ loc, onRemove }: Props) {
           <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
             From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
           </div>
+          <ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />
         </div>
         <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">

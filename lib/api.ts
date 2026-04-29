@@ -2,6 +2,7 @@ import type { Forecast, GeocodeResult, RainViewerData } from './types';
 
 const FORECAST_URL = 'https://api.open-meteo.com/v1/forecast';
 const GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/search';
+const REVERSE_GEOCODE_URL = 'https://geocoding-api.open-meteo.com/v1/reverse';
 const RAINVIEWER_URL = 'https://api.rainviewer.com/public/weather-maps.json';
 
 const CURRENT_VARS = [
@@ -105,6 +106,29 @@ export async function geocode(query: string): Promise<GeocodeResult[]> {
   if (!res.ok) return [];
   const data = (await res.json()) as { results?: GeocodeResult[] };
   return data.results ?? [];
+}
+
+export async function reverseGeocode(lat: number, lon: number): Promise<string | null> {
+  // Open-Meteo reverse geocoder. Returns a friendly name (city, then admin1)
+  // or null if nothing useful comes back. Failures are non-fatal — caller falls
+  // back to "Current Location".
+  try {
+    const params = new URLSearchParams({
+      latitude: String(lat),
+      longitude: String(lon),
+      count: '1',
+      language: 'en',
+      format: 'json',
+    });
+    const res = await fetch(`${REVERSE_GEOCODE_URL}?${params.toString()}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { results?: GeocodeResult[] };
+    const r = data.results?.[0];
+    if (!r) return null;
+    return r.name || r.admin1 || null;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchRainViewer(): Promise<RainViewerData> {

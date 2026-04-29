@@ -1,55 +1,128 @@
-// What to wear for the next 12 hours, based on apparent temp range
-// plus wind and precip. Output one of the user's preferred combinations:
-//   "shorts and a polo", "pants and a polo",
-//   "shorts and a light long sleeve", "pants and a light long sleeve"
-// extended with optional layers (windbreaker, rain shell, hat, jacket).
+// Wear advice: rule tree based on a single hour's snapshot.
+// Pick a base outfit by apparent temp, then layer modifiers
+// (wind, rain, glove logic, sun, humidity) into the detail.
+
+export type WearInputs = {
+  apparent_temp: number;
+  wind_speed: number;
+  wind_gusts: number;
+  precip_probability: number;
+  uv_index: number;
+  dew_point: number;
+};
 
 export type WearAdvice = {
-  base: string; // primary outfit, e.g. "Pants and a light long sleeve"
-  extras: string[]; // additional layers/recs
-  summary: string; // joined sentence
   emoji: string;
+  headline: string;
+  detail: string;
 };
 
-type Inputs = {
-  feels: number[]; // apparent temp F per hour
-  wind: number[]; // mph per hour
-  gusts: number[]; // mph per hour
-  precipProb: number[]; // % per hour
-};
+export function wearAdvice(i: WearInputs): WearAdvice {
+  const t = i.apparent_temp;
 
-export function wearAdvice(i: Inputs): WearAdvice {
-  const minFeels = Math.min(...i.feels);
-  const maxFeels = Math.max(...i.feels);
-  const peakWind = Math.max(...i.wind);
-  const peakGust = Math.max(...i.gusts);
-  const peakPrecip = Math.max(...i.precipProb);
+  // Base layers, sized to apparent temp.
+  let emoji = '☀️';
+  let headline = 'Perfect golf weather.';
+  let base = 'Polo and shorts.';
 
-  // Bottom: pants if it gets even briefly cool during the window.
-  const bottom: 'Shorts' | 'Pants' = minFeels < 60 ? 'Pants' : 'Shorts';
+  if (t < 35) {
+    emoji = '🥶';
+    headline = 'Bundle up.';
+    base = 'Thermal base layer, sweater or hoodie, golf pants, beanie, winter gloves between shots.';
+  } else if (t < 50) {
+    emoji = '🧥';
+    headline = 'Layer up.';
+    base = 'Long sleeve base layer, quarter-zip or vest, pants, beanie or warm hat.';
+  } else if (t < 60) {
+    emoji = '🧥';
+    headline = 'Cool round.';
+    base = 'Long sleeve, light quarter-zip or vest, pants.';
+  } else if (t < 67) {
+    emoji = '🌤️';
+    headline = 'Light layers.';
+    base = 'Long sleeve or polo with a light pullover you can shed, pants or joggers.';
+  } else if (t < 80) {
+    emoji = '☀️';
+    headline = 'Perfect golf weather.';
+    base = 'Polo and shorts.';
+  } else if (t < 88) {
+    emoji = '😎';
+    headline = 'Warm one.';
+    base = 'Lightweight polo, shorts, hat.';
+  } else {
+    emoji = '🥵';
+    headline = 'Hot round.';
+    base = 'Lightweight breathable polo, shorts, hat, plenty of water.';
+  }
 
-  // Top: polo if warm enough throughout, long sleeve if it gets cool,
-  // long sleeve also if windy.
-  let top = 'polo';
-  if (minFeels < 55) top = 'light long sleeve';
-  else if (peakWind >= 14 && minFeels < 65) top = 'light long sleeve';
-
-  const base = `${bottom} and a ${top}`;
+  // Modifiers — appended in this fixed order to keep advice predictable.
   const extras: string[] = [];
 
-  if (minFeels < 45) extras.push('pack a jacket');
-  else if (minFeels < 55 && top === 'light long sleeve') extras.push('grab a vest');
-  if (peakGust >= 22 && minFeels < 70) extras.push('windbreaker for the gusts');
-  if (peakPrecip >= 50) extras.push('rain shell');
-  else if (peakPrecip >= 30) extras.push('a hat for showers');
-  if (maxFeels >= 85) extras.push('sun hat + sunscreen');
+  // WIND
+  if (i.wind_speed >= 15 && i.apparent_temp < 65) {
+    extras.push('Windbreaker for the gusts.');
+  }
+  if (i.wind_speed >= 20) {
+    extras.push("Hat with a chin strap or skip the hat — it's flying off.");
+  }
 
-  const summary = extras.length ? `${base} — ${extras.join(', ')}.` : `${base}.`;
+  // RAIN
+  if (i.precip_probability >= 50) {
+    extras.push("Rain jacket and waterproof shoes — it's coming.");
+  } else if (i.precip_probability >= 30) {
+    extras.push('Pack rain gear just in case.');
+  }
 
-  let emoji = '👕';
-  if (minFeels < 45) emoji = '🧥';
-  else if (top === 'light long sleeve') emoji = '👔';
-  if (peakPrecip >= 50) emoji = '🧥';
+  // GLOVE LOGIC (golf-specific)
+  if (i.apparent_temp < 50) {
+    extras.push('Winter golf gloves between shots, regular glove for the swing.');
+  } else if (i.apparent_temp < 60) {
+    extras.push('Hand warmer in your pocket helps.');
+  }
+  if (i.dew_point > 70 && i.apparent_temp > 75) {
+    extras.push('Bring a backup glove — the one you start with will be soaked.');
+  }
 
-  return { base, extras, summary, emoji };
+  // SUN
+  if (i.uv_index >= 8) {
+    extras.push('Sunscreen and a sun sleeve — UV is brutal today.');
+  } else if (i.uv_index >= 6) {
+    extras.push('Sunscreen, especially on the back of your neck.');
+  }
+
+  // HUMIDITY
+  if (i.dew_point >= 70) {
+    extras.push("Towel to your bag — it's muggy.");
+  }
+
+  const detail = [base, ...extras].join(' ');
+  return { emoji, headline, detail };
 }
+
+/*
+Sanity check (computed from this implementation):
+
+T-A: 46°F apparent, 19mph wind, 32mph gusts, 10% precip, UV 4, 42° dew →
+  emoji: 🧥
+  headline: Layer up.
+  detail: "Long sleeve base layer, quarter-zip or vest, pants, beanie or
+    warm hat. Windbreaker for the gusts. Winter golf gloves between shots,
+    regular glove for the swing."
+  Notes: spec example also includes "Hat with a chin strap…" but that
+  modifier requires wind_speed >= 20; 19 falls just under, so it's not
+  appended. (If you want 19mph to trip the hat rule, lower the threshold
+  to >= 19.)
+
+T-B: 73°F apparent, 8mph wind, 12mph gusts, 0% precip, UV 7, 60° dew →
+  emoji: ☀️
+  headline: Perfect golf weather.
+  detail: "Polo and shorts. Sunscreen, especially on the back of your neck."
+
+T-C: 90°F apparent, 4mph wind, 6mph gusts, 0% precip, UV 9, 74° dew →
+  emoji: 🥵
+  headline: Hot round.
+  detail: "Lightweight breathable polo, shorts, hat, plenty of water.
+    Bring a backup glove — the one you start with will be soaked.
+    Sunscreen and a sun sleeve — UV is brutal today. Towel to your bag —
+    it's muggy."
+*/
