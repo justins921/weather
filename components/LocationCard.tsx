@@ -7,11 +7,13 @@ import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { dewPointLabel, comingUpSentence, rightNowSentence, windArrow, windCardinal } from '@/lib/narrative';
 import { playability } from '@/lib/playability';
-import { setSelectedId } from '@/lib/locations';
+import { setSelectedId, setLocationElevation } from '@/lib/locations';
 import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
+import { carryMultiplier, playsColor, playsLabel, playsYards } from '@/lib/airDensity';
 import ClubWindLine from './ClubWindLine';
 import HourlyBars from './HourlyBars';
+import PressureTrendLine from './PressureTrendLine';
 
 type Props = {
   loc: Location;
@@ -29,7 +31,12 @@ export default function LocationCard({ loc, onRemove }: Props) {
       fetchForecast(loc.lat, loc.lon, 'gfs_seamless'),
     )
       .then((d) => {
-        if (!cancelled) setData(d);
+        if (cancelled) return;
+        setData(d);
+        // Capture elevation back onto the location once we know it.
+        if (loc.elevation_ft === undefined && typeof d.elevation === 'number') {
+          setLocationElevation(loc.id, d.elevation);
+        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setErr(e instanceof Error ? e.message : 'Failed to load');
@@ -136,6 +143,7 @@ export default function LocationCard({ loc, onRemove }: Props) {
             From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
           </div>
           <ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />
+          <PressureTrendLine forecast={data} />
         </div>
         <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
           <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
@@ -159,8 +167,43 @@ export default function LocationCard({ loc, onRemove }: Props) {
         <HourlyBars forecast={data} height={28} />
       </div>
 
-      <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ background: score.color }}>
-        <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label}
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span
+          className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
+          style={{ background: score.color }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label}
+        </span>
+        {(() => {
+          // Pick the hourly slot that brackets "now" so we read pressure from
+          // roughly the current hour, not whatever's at index 0 (which may be
+          // 6 hours ago thanks to past_hours).
+          const nowMs = Date.now();
+          let pIdx = 0;
+          for (let i = 0; i < data.hourly.time.length; i++) {
+            if (new Date(data.hourly.time[i]).getTime() >= nowMs) {
+              pIdx = Math.max(0, i - 1);
+              break;
+            }
+          }
+          const inputs = {
+            apparent_temp_f: c.apparent_temperature,
+            elevation_ft: loc.elevation_ft ?? Math.round(data.elevation * 3.28084),
+            surface_pressure_hpa: data.hourly.surface_pressure?.[pIdx] ?? 1013,
+            relative_humidity: c.relative_humidity_2m,
+          };
+          const yds = playsYards(carryMultiplier(inputs));
+          if (Math.abs(yds) < 2) return null;
+          const color = playsColor(yds);
+          return (
+            <span
+              className="text-xs font-medium"
+              style={color ? { color } : undefined}
+            >
+              🎯 {playsLabel(yds)}
+            </span>
+          );
+        })()}
       </div>
     </div>
   );

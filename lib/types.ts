@@ -3,6 +3,7 @@ export type Location = {
   name: string;
   lat: number;
   lon: number;
+  elevation_ft?: number;
   isCurrent?: boolean;
 };
 
@@ -34,6 +35,7 @@ export type HourlyBlock = {
   wind_gusts_10m: number[];
   cloud_cover: number[];
   uv_index: number[];
+  surface_pressure: number[];
 };
 
 export type DailyBlock = {
@@ -63,6 +65,7 @@ export type Forecast = {
   latitude: number;
   longitude: number;
   timezone: string;
+  elevation: number; // meters above sea level
   current: CurrentBlock;
   hourly: HourlyBlock;
   daily: DailyBlock;

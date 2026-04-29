@@ -1,5 +1,6 @@
 // Rules-based narrative generator. No LLM. Edit the strings to taste.
 import { clubsForWind, formatClubs } from './clubWind';
+import { pressureTrend } from './pressureTrend';
 import type { Forecast } from './types';
 import { weatherLabel } from './weatherCodes';
 
@@ -43,6 +44,31 @@ export function comingUpSentence(f: Forecast): string {
     const startIdx = precips.findIndex((p, idx) => p > 0.01 || probs[idx] >= 50);
     if (startIdx > 0) {
       return `Rain starting around ${fmtHour(times[startIdx], tz)}.`;
+    }
+  }
+
+  // 1.5. Pressure crash: surfaces an early heads-up before rule #2 fires.
+  // We look at the actual hourly array (not the 12h forward slice) so we can
+  // compare current pressure to 6 hours ago using the past_hours data.
+  if (currentPrecip < 0.01 && h.surface_pressure && h.surface_pressure.length) {
+    const nowMs = Date.now();
+    let nowIdx = -1;
+    for (let i = 0; i < h.time.length; i++) {
+      if (new Date(h.time[i]).getTime() >= nowMs) {
+        nowIdx = Math.max(0, i - 1);
+        break;
+      }
+    }
+    if (nowIdx >= 1) {
+      const sixAgoIdx = Math.max(0, nowIdx - 6);
+      const cur = h.surface_pressure[nowIdx];
+      const past = h.surface_pressure[sixAgoIdx];
+      if (typeof cur === 'number' && typeof past === 'number') {
+        const t = pressureTrend(cur, past);
+        if (t.label === 'Falling fast') {
+          return 'Pressure dropping — weather likely changing in the next few hours.';
+        }
+      }
     }
   }
 

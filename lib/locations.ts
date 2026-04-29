@@ -68,6 +68,20 @@ export function hasCurrentLocation(): boolean {
   return loadLocations().some((l) => l.isCurrent);
 }
 
+// Convert a meters-above-sea-level value (as Open-Meteo returns it) into feet
+// and write it back onto the matching location. Idempotent — if the elevation
+// is already set, no-op.
+export function setLocationElevation(id: string, meters: number): Location[] {
+  const locations = loadLocations();
+  const existing = locations.find((l) => l.id === id);
+  if (!existing) return locations;
+  const feet = Math.round(meters * 3.28084);
+  if (existing.elevation_ft === feet) return locations;
+  const next = locations.map((l) => (l.id === id ? { ...l, elevation_ft: feet } : l));
+  saveLocations(next);
+  return next;
+}
+
 export function addLocation(loc: Omit<Location, 'id'> & { id?: string }): Location[] {
   const locations = loadLocations();
   const id = loc.id ?? slugify(loc.name) + '-' + Math.random().toString(36).slice(2, 6);

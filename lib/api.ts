@@ -33,6 +33,7 @@ const HOURLY_VARS = [
   'wind_gusts_10m',
   'cloud_cover',
   'uv_index',
+  'surface_pressure',
 ].join(',');
 
 const DAILY_VARS = [
@@ -65,6 +66,7 @@ function buildForecastURL(lat: number, lon: number, model: 'gfs_seamless' | 'ecm
     precipitation_unit: 'inch',
     timezone: 'auto',
     forecast_days: '8',
+    past_hours: '6',
   });
   return `${FORECAST_URL}?${params.toString()}`;
 }

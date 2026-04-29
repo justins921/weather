@@ -6,15 +6,17 @@ import HourlyBars from '@/components/HourlyBars';
 import HourlyStrip from '@/components/HourlyStrip';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
+import AirDensityCard from '@/components/AirDensityCard';
 import ClubWindLine from '@/components/ClubWindLine';
 import MetricCard from '@/components/MetricCard';
+import PressureTrendLine from '@/components/PressureTrendLine';
 import MinutelyChart from '@/components/MinutelyChart';
 import ModelAgreement from '@/components/ModelAgreement';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchBothModels } from '@/lib/api';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
-import { getSelectedLocation } from '@/lib/locations';
+import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
 import {
   comingUpSentence,
   dewPointLabel,
@@ -43,6 +45,9 @@ export default function ForecastPage() {
         if (cancelled) return;
         setGfs(g);
         setEcmwf(e);
+        if (sel.elevation_ft === undefined && typeof g.elevation === 'number') {
+          setLocationElevation(sel.id, g.elevation);
+        }
       })
       .catch(() => {});
     return () => {
@@ -137,7 +142,12 @@ export default function ForecastPage() {
               </span>
             }
             sub={`From the ${windCardinal(c.wind_direction_10m)}. Gusts to ${Math.round(c.wind_gusts_10m)}mph.`}
-            footer={<ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />}
+            footer={
+              <>
+                <ClubWindLine windSpeed={c.wind_speed_10m} gusts={c.wind_gusts_10m} />
+                <PressureTrendLine forecast={gfs} />
+              </>
+            }
           />
           {dewExtreme ? (
             <MetricCard
@@ -152,6 +162,16 @@ export default function ForecastPage() {
               sub={`Dew ${fmtTemp(c.dew_point_2m)} · ${dewPointLabel(c.dew_point_2m)}`}
             />
           )}
+        </div>
+        <div className="mt-2">
+          <AirDensityCard
+            inputs={{
+              apparent_temp_f: c.apparent_temperature,
+              elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
+              surface_pressure_hpa: currentSurfacePressure(gfs),
+              relative_humidity: c.relative_humidity_2m,
+            }}
+          />
         </div>
         {todayUv > 5 && (
           <div className="mt-2">
@@ -189,6 +209,21 @@ export default function ForecastPage() {
       {ecmwf && <ModelAgreement gfs={gfs} ecmwf={ecmwf} />}
     </div>
   );
+}
+
+function currentSurfacePressure(f: Forecast): number {
+  // Find the hourly index closest to (and not after) "now" and read its
+  // surface_pressure. Open-Meteo includes past_hours in the array, so the
+  // first entry may be 6 hours ago — we still want the current bucket.
+  const nowMs = Date.now();
+  let idx = 0;
+  for (let i = 0; i < f.hourly.time.length; i++) {
+    if (new Date(f.hourly.time[i]).getTime() >= nowMs) {
+      idx = Math.max(0, i - 1);
+      break;
+    }
+  }
+  return f.hourly.surface_pressure?.[idx] ?? 1013;
 }
 
 function uvAdvice(uv: number): string {
