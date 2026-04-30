@@ -221,7 +221,11 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
           <div className="text-sm">{rightNowSentence(data, obs)}</div>
           {obsFresh && obs && (
             <div className="mt-1 text-[10px] text-fg-light/40 dark:text-fg-dark/40">
-              Obs: {obs.stationId} · {fmtObsTime(obs.observedAt)}
+              Obs: {obs.sourceName ?? obs.stationId}
+              {obs.network || typeof obs.distanceKm === 'number'
+                ? ` (${[obs.network, typeof obs.distanceKm === 'number' ? `${obs.distanceKm.toFixed(1)}km` : null].filter(Boolean).join(', ')})`
+                : ''}{' '}
+              · {fmtObsTime(obs.observedAt)}
             </div>
           )}
 

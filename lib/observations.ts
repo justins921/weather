@@ -19,6 +19,12 @@ export type Observation = {
   presentWeather: string[];
   isPrecipitating: boolean;
   ageMs: number;
+  // Source metadata — populated by both the NWS and PWS paths. The UI uses
+  // these to label the readout ("Measured at AT123 (PWS, 1.2km)").
+  source?: 'nws' | 'pws';
+  sourceName?: string;
+  distanceKm?: number | null;
+  network?: string | null;
 };
 
 const POINTS_URL = 'https://api.weather.gov/points';
@@ -94,7 +100,20 @@ function mmToIn(m: number | null | undefined): number | null {
 
 const PRECIP_RE = /rain|drizzle|snow|sleet|shower|thunderstorm|hail|ice/i;
 
+// Top-level dispatcher: prefer PWS (Synoptic mesonet) when it returns a fresh
+// nearby station, otherwise fall back to the NWS airport observation. PWS
+// stations are typically much closer to a given course than the nearest
+// ASOS/AWOS, so they win when available.
 export async function fetchObservation(lat: number, lon: number): Promise<Observation | null> {
+  // Lazy import keeps server-route dependencies (URL, fetch) out of any
+  // server-side render path that might import this module first.
+  const { fetchMesonetObservation } = await import('./mesonet');
+  const meso = await fetchMesonetObservation(lat, lon);
+  if (meso && meso.ageMs < OBS_TRUST_WINDOW_MS) return meso;
+  return fetchNWSObservation(lat, lon);
+}
+
+export async function fetchNWSObservation(lat: number, lon: number): Promise<Observation | null> {
   const stationId = await findStationId(lat, lon);
   if (!stationId) return null;
   try {
@@ -132,6 +151,9 @@ export async function fetchObservation(lat: number, lon: number): Promise<Observ
       presentWeather,
       isPrecipitating,
       ageMs: Date.now() - new Date(ts).getTime(),
+      source: 'nws',
+      sourceName: stationId,
+      network: 'NWS',
     };
   } catch {
     return null;

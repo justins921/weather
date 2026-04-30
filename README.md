@@ -24,6 +24,28 @@ Then open <http://localhost:3000>.
 npm run build && npm start
 ```
 
+## Optional: Personal Weather Station data (Synoptic Mesonet)
+
+For ground-truth current conditions closer than the nearest airport ASOS,
+the app can pull from the [Synoptic Data Mesonet
+network](https://synopticdata.com/) — ~50K stations including CWOP, RAWS,
+mesonets, and PWS feeds. Free for non-commercial use.
+
+1. Sign up at <https://customer.synopticdata.com/credentials/>.
+2. Generate a public token.
+3. Add it to a local `.env.local` (and to your Vercel environment for
+   production):
+
+   ```bash
+   SYNOPTIC_TOKEN=<your-token>
+   ```
+
+The token is read by `app/api/pws/route.ts` (server-side only — never
+ships to the client). When configured, `fetchObservation()` prefers the
+nearest reporting Mesonet station and falls back to the NWS airport
+station if Mesonet has nothing fresh nearby. With no token, the app
+silently uses NWS only.
+
 ## Deploy to Vercel
 
 1. Push this repo to GitHub.

@@ -165,7 +165,8 @@ export default function ForecastPage() {
         <div className="text-base">{rightNowSentence(gfs, obs)}</div>
         {obsFresh && obs && (
           <div className="mt-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
-            Measured at {obs.stationId} · {fmtObsTime(obs.observedAt)}
+            Measured at {obs.sourceName ?? obs.stationId}
+            {obsSourceLabel(obs)} · {fmtObsTime(obs.observedAt)}
           </div>
         )}
         <div className="mt-3 flex items-center gap-4">
@@ -260,6 +261,13 @@ function fmtObsTime(iso: string): string {
     .format(new Date(iso))
     .toLowerCase()
     .replace(' ', '');
+}
+
+function obsSourceLabel(obs: Observation): string {
+  const parts: string[] = [];
+  if (obs.network) parts.push(obs.network);
+  if (typeof obs.distanceKm === 'number') parts.push(`${obs.distanceKm.toFixed(1)}km`);
+  return parts.length ? ` (${parts.join(', ')})` : '';
 }
 
 function currentHourlyValue<K extends keyof Forecast['hourly']>(
