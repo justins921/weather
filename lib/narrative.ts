@@ -1,11 +1,33 @@
 // Rules-based narrative generator. No LLM. Edit the strings to taste.
 import { clubsForWind, formatClubs } from './clubWind';
+import { isObsRecent, minutelyPrecipNow, type Observation } from './observations';
 import { pressureTrend } from './pressureTrend';
 import type { Forecast } from './types';
 import { weatherLabel } from './weatherCodes';
 
-export function rightNowSentence(f: Forecast): string {
+// Priority for "Right now":
+//   1. Live radar (minutely_15) showing measurable precip in the current slot
+//   2. NWS station observation textDescription (when fresh)
+//   3. Forecast model weather_code (fallback)
+export function rightNowSentence(f: Forecast, obs?: Observation | null): string {
+  if (f.minutely_15) {
+    const p = minutelyPrecipNow(f.minutely_15.time, f.minutely_15.precipitation);
+    if (p > 0.005) {
+      // Try to refine wording from the obs if it's fresh.
+      if (isObsRecent(obs ?? null) && obs?.textDescription) {
+        return ensureDot(obs.textDescription);
+      }
+      return 'Raining.';
+    }
+  }
+  if (isObsRecent(obs ?? null) && obs?.textDescription) {
+    return ensureDot(obs.textDescription);
+  }
   return weatherLabel(f.current.weather_code, f.current.cloud_cover);
+}
+
+function ensureDot(s: string): string {
+  return /[.!?]$/.test(s.trim()) ? s.trim() : s.trim() + '.';
 }
 
 function fmtHour(iso: string, timezone?: string): string {

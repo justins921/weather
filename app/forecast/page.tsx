@@ -16,6 +16,7 @@ import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchBothModels } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
 import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
+import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
@@ -36,13 +37,14 @@ export default function ForecastPage() {
   const [ecmwf, setEcmwf] = useState<Forecast | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
+  const [obs, setObs] = useState<Observation | null>(null);
 
   useEffect(() => {
     const sel = getSelectedLocation();
     setLoc(sel);
     if (!sel) return;
     let cancelled = false;
-    cachedFetch(`fcboth:${sel.lat},${sel.lon}`, 30 * 60 * 1000, () =>
+    cachedFetch(`fcboth:${sel.lat},${sel.lon}`, 10 * 60 * 1000, () =>
       fetchBothModels(sel.lat, sel.lon),
     )
       .then(({ gfs: g, ecmwf: e }) => {
@@ -59,6 +61,13 @@ export default function ForecastPage() {
     )
       .then((a) => {
         if (!cancelled) setAlerts(a);
+      })
+      .catch(() => {});
+    cachedFetch(`obs:${sel.lat},${sel.lon}`, 5 * 60 * 1000, () =>
+      fetchObservation(sel.lat, sel.lon),
+    )
+      .then((o) => {
+        if (!cancelled) setObs(o);
       })
       .catch(() => {});
     cachedFetch(`aq:${sel.lat},${sel.lon}`, 30 * 60 * 1000, () =>
@@ -95,18 +104,35 @@ export default function ForecastPage() {
   }
 
   const c = gfs.current;
+  // Prefer NWS observations when fresh — measured beats modelled.
+  const obsFresh = isObsRecent(obs);
+  const displayTemp = obsFresh && obs?.temperature_f != null ? obs.temperature_f : c.temperature_2m;
+  const displayFeels =
+    obsFresh && obs?.apparent_temperature_f != null
+      ? obs.apparent_temperature_f
+      : c.apparent_temperature;
+  const displayWind =
+    obsFresh && obs?.wind_speed_mph != null ? obs.wind_speed_mph : c.wind_speed_10m;
+  const displayGusts =
+    obsFresh && obs?.wind_gusts_mph != null ? obs.wind_gusts_mph : c.wind_gusts_10m;
+  const displayWindDir =
+    obsFresh && obs?.wind_direction != null ? obs.wind_direction : c.wind_direction_10m;
+  const displayHumidity =
+    obsFresh && obs?.humidity != null ? obs.humidity : c.relative_humidity_2m;
+  const displayDew = obsFresh && obs?.dewpoint_f != null ? obs.dewpoint_f : c.dew_point_2m;
+
   const score = playability({
-    apparent_temp: c.apparent_temperature,
-    wind_speed: c.wind_speed_10m,
-    wind_gusts: c.wind_gusts_10m,
+    apparent_temp: displayFeels,
+    wind_speed: displayWind,
+    wind_gusts: displayGusts,
     precip_probability: gfs.hourly.precipitation_probability[0] ?? 0,
-    humidity: c.relative_humidity_2m,
-    dew_point: c.dew_point_2m,
+    humidity: displayHumidity,
+    dew_point: displayDew,
     cloud_cover: c.cloud_cover,
   });
 
   const todayUv = gfs.daily.uv_index_max[0];
-  const dewExtreme = c.dew_point_2m >= 70 || c.dew_point_2m < 30;
+  const dewExtreme = displayDew >= 70 || displayDew < 30;
 
   function share() {
     const url = window.location.href;
@@ -136,13 +162,18 @@ export default function ForecastPage() {
         <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
           Right now
         </div>
-        <div className="text-base">{rightNowSentence(gfs)}</div>
+        <div className="text-base">{rightNowSentence(gfs, obs)}</div>
+        {obsFresh && obs && (
+          <div className="mt-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
+            Measured at {obs.stationId} · {fmtObsTime(obs.observedAt)}
+          </div>
+        )}
         <div className="mt-3 flex items-center gap-4">
           <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</div>
           <div>
-            <div className="text-7xl font-semibold leading-none">{fmtTemp(c.temperature_2m)}</div>
+            <div className="text-7xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
             <div className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">
-              Feels {fmtTemp(c.apparent_temperature)}
+              Feels {fmtTemp(displayFeels)}
             </div>
           </div>
         </div>
@@ -151,36 +182,36 @@ export default function ForecastPage() {
             label="Wind"
             value={
               <span>
-                {fmtMph(c.wind_speed_10m)} {windArrow(c.wind_direction_10m)}
+                {fmtMph(displayWind)} {windArrow(displayWindDir)}
               </span>
             }
-            sub={`From the ${windCardinal(c.wind_direction_10m)}. Gusts to ${Math.round(c.wind_gusts_10m)}mph.`}
+            sub={`From the ${windCardinal(displayWindDir)}. Gusts to ${Math.round(displayGusts)}mph.`}
             footer={<PressureTrendLine forecast={gfs} />}
           />
           {dewExtreme ? (
             <MetricCard
               label="Dew Point"
-              value={`${fmtTemp(c.dew_point_2m)} 💧`}
-              sub={dewPointLabel(c.dew_point_2m)}
+              value={`${fmtTemp(displayDew)} 💧`}
+              sub={dewPointLabel(displayDew)}
             />
           ) : (
             <MetricCard
               label="Humidity"
-              value={`${Math.round(c.relative_humidity_2m)}%`}
-              sub={`Dew ${fmtTemp(c.dew_point_2m)} · ${dewPointLabel(c.dew_point_2m)}`}
+              value={`${Math.round(displayHumidity)}%`}
+              sub={`Dew ${fmtTemp(displayDew)} · ${dewPointLabel(displayDew)}`}
             />
           )}
         </div>
         <div className="mt-2">
           <GolfCard
             playability={score}
-            windSpeed={c.wind_speed_10m}
-            gusts={c.wind_gusts_10m}
+            windSpeed={displayWind}
+            gusts={displayGusts}
             airInputs={{
-              apparent_temp_f: c.apparent_temperature,
+              apparent_temp_f: displayFeels,
               elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
               surface_pressure_hpa: currentSurfacePressure(gfs),
-              relative_humidity: c.relative_humidity_2m,
+              relative_humidity: displayHumidity,
             }}
             soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
             airQuality={airQuality}
@@ -222,6 +253,13 @@ export default function ForecastPage() {
       {ecmwf && <ModelAgreement gfs={gfs} ecmwf={ecmwf} />}
     </div>
   );
+}
+
+function fmtObsTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
+    .format(new Date(iso))
+    .toLowerCase()
+    .replace(' ', '');
 }
 
 function currentHourlyValue<K extends keyof Forecast['hourly']>(

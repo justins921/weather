@@ -8,6 +8,7 @@ import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { dewPointLabel, comingUpSentence, rightNowSentence, windArrow, windCardinal } from '@/lib/narrative';
+import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { playability } from '@/lib/playability';
 import { setSelectedId, setLocationElevation } from '@/lib/locations';
 import type { Forecast, Location } from '@/lib/types';
@@ -29,11 +30,13 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   const [data, setData] = useState<Forecast | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
+  const [obs, setObs] = useState<Observation | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    cachedFetch(`fc:${loc.lat},${loc.lon}`, 30 * 60 * 1000, () =>
+    // Forecast — tightened TTL so "now" stays close to live.
+    cachedFetch(`fc:${loc.lat},${loc.lon}`, 10 * 60 * 1000, () =>
       fetchForecast(loc.lat, loc.lon, 'gfs_seamless'),
     )
       .then((d) => {
@@ -52,6 +55,14 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
     )
       .then((a) => {
         if (!cancelled) setAlerts(a);
+      })
+      .catch(() => {});
+    // NWS measured observations — ground truth for "Right now" in the US.
+    cachedFetch(`obs:${loc.lat},${loc.lon}`, 5 * 60 * 1000, () =>
+      fetchObservation(loc.lat, loc.lon),
+    )
+      .then((o) => {
+        if (!cancelled) setObs(o);
       })
       .catch(() => {});
     // Air quality refresh less aggressively.
@@ -143,13 +154,31 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   }
 
   const c = data.current;
+  // When fresh NWS observations are available, prefer the measured values
+  // for the displayed "current" temperature, feels-like, wind, and humidity.
+  const obsFresh = isObsRecent(obs);
+  const displayTemp = obsFresh && obs?.temperature_f != null ? obs.temperature_f : c.temperature_2m;
+  const displayFeels =
+    obsFresh && obs?.apparent_temperature_f != null
+      ? obs.apparent_temperature_f
+      : c.apparent_temperature;
+  const displayWind =
+    obsFresh && obs?.wind_speed_mph != null ? obs.wind_speed_mph : c.wind_speed_10m;
+  const displayGusts =
+    obsFresh && obs?.wind_gusts_mph != null ? obs.wind_gusts_mph : c.wind_gusts_10m;
+  const displayWindDir =
+    obsFresh && obs?.wind_direction != null ? obs.wind_direction : c.wind_direction_10m;
+  const displayHumidity =
+    obsFresh && obs?.humidity != null ? obs.humidity : c.relative_humidity_2m;
+  const displayDew = obsFresh && obs?.dewpoint_f != null ? obs.dewpoint_f : c.dew_point_2m;
+
   const score = playability({
-    apparent_temp: c.apparent_temperature,
-    wind_speed: c.wind_speed_10m,
-    wind_gusts: c.wind_gusts_10m,
+    apparent_temp: displayFeels,
+    wind_speed: displayWind,
+    wind_gusts: displayGusts,
     precip_probability: data.hourly.precipitation_probability[0] ?? 0,
-    humidity: c.relative_humidity_2m,
-    dew_point: c.dew_point_2m,
+    humidity: displayHumidity,
+    dew_point: displayDew,
     cloud_cover: c.cloud_cover,
   });
 
@@ -159,9 +188,9 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
       <div className="flex items-center gap-3">
         <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</span>
         <div>
-          <div className="text-2xl font-semibold leading-none">{fmtTemp(c.temperature_2m)}</div>
+          <div className="text-2xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
           <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            Feels {fmtTemp(c.apparent_temperature)}
+            Feels {fmtTemp(displayFeels)}
           </div>
         </div>
       </div>
@@ -189,7 +218,12 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
           <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
             Right now
           </div>
-          <div className="text-sm">{rightNowSentence(data)}</div>
+          <div className="text-sm">{rightNowSentence(data, obs)}</div>
+          {obsFresh && obs && (
+            <div className="mt-1 text-[10px] text-fg-light/40 dark:text-fg-dark/40">
+              Obs: {obs.stationId} · {fmtObsTime(obs.observedAt)}
+            </div>
+          )}
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
@@ -197,10 +231,10 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
                 Wind
               </div>
               <div className="mt-1 text-base font-semibold">
-                {fmtMph(c.wind_speed_10m)} {windArrow(c.wind_direction_10m)}
+                {fmtMph(displayWind)} {windArrow(displayWindDir)}
               </div>
               <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-                From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
+                From the {windCardinal(displayWindDir)}. Gusts to {Math.round(displayGusts)}mph.
               </div>
               <PressureTrendLine forecast={data} />
             </div>
@@ -208,9 +242,9 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
               <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
                 Dew Point
               </div>
-              <div className="mt-1 text-base font-semibold">{fmtTemp(c.dew_point_2m)} 💧</div>
+              <div className="mt-1 text-base font-semibold">{fmtTemp(displayDew)} 💧</div>
               <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-                {dewPointLabel(c.dew_point_2m)}
+                {dewPointLabel(displayDew)}
               </div>
             </div>
           </div>
@@ -228,9 +262,9 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             <GolfCard
               compact
               playability={score}
-              windSpeed={c.wind_speed_10m}
-              gusts={c.wind_gusts_10m}
-              airInputs={airInputsForCurrent(data, loc, c.apparent_temperature, c.relative_humidity_2m)}
+              windSpeed={displayWind}
+              gusts={displayGusts}
+              airInputs={airInputsForCurrent(data, loc, displayFeels, displayHumidity)}
               soilMoisture={currentSoilMoisture(data)}
               airQuality={airQuality}
             />
@@ -249,6 +283,13 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
       )}
     </div>
   );
+}
+
+function fmtObsTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
+    .format(new Date(iso))
+    .toLowerCase()
+    .replace(' ', '');
 }
 
 // Same idea as airInputsForCurrent but for soil moisture.
