@@ -6,7 +6,9 @@ import {
   playsYards,
   type ConditionsInput,
 } from '@/lib/airDensity';
+import { airQualityHint, type AirQuality } from '@/lib/airQuality';
 import { clubsForWind, formatClubs } from '@/lib/clubWind';
+import { courseConditions } from '@/lib/courseConditions';
 import type { PlayabilityResult } from '@/lib/playability';
 
 type Props = {
@@ -14,6 +16,9 @@ type Props = {
   windSpeed: number;
   gusts: number;
   airInputs: ConditionsInput;
+  // Optional supplementary signals — render only when meaningful.
+  soilMoisture?: number;
+  airQuality?: AirQuality | null;
   // Slimmer chrome for use as a sub-card inside an existing card (dashboard).
   compact?: boolean;
 };
@@ -22,7 +27,15 @@ type Props = {
 //   - Playability score
 //   - Club-wind translation
 //   - Air-density "plays" yardage
-export default function GolfCard({ playability, windSpeed, gusts, airInputs, compact }: Props) {
+export default function GolfCard({
+  playability,
+  windSpeed,
+  gusts,
+  airInputs,
+  soilMoisture,
+  airQuality,
+  compact,
+}: Props) {
   const sustained = clubsForWind(windSpeed);
   const peak = clubsForWind(gusts);
   const skipClubs = windSpeed < 6 && gusts < 6;
@@ -31,6 +44,9 @@ export default function GolfCard({ playability, windSpeed, gusts, airInputs, com
   const yards = playsYards(multiplier);
   const ydsColor = playsColor(yards);
   const reason = playsReason(airInputs);
+
+  const course = courseConditions(soilMoisture);
+  const aq = airQualityHint(airQuality ?? null);
 
   const wrapper = compact
     ? 'rounded-xl bg-black/5 p-3 dark:bg-white/5'
@@ -51,6 +67,11 @@ export default function GolfCard({ playability, windSpeed, gusts, airInputs, com
             {playability.label} · {playability.score}
           </span>
         </Row>
+        {course && (
+          <Row label="Course" hint={course.hint}>
+            <span className="text-sm font-semibold">{courseEmoji(course.level)} {course.label}</span>
+          </Row>
+        )}
         {!skipClubs && (
           <Row label="Club Wind" hint={clubHint(sustained, peak)}>
             <ClubReadout sustained={sustained} peak={peak} />
@@ -64,9 +85,23 @@ export default function GolfCard({ playability, windSpeed, gusts, airInputs, com
             🎯 {playsLabel(yards)}
           </span>
         </Row>
+        {aq && (
+          <Row label="Air Quality" hint={aq.hint}>
+            <span className="text-sm font-semibold" style={{ color: aq.color }}>
+              😷 {aq.label}
+            </span>
+          </Row>
+        )}
       </div>
     </section>
   );
+}
+
+function courseEmoji(level: 'firm' | 'normal' | 'soft' | 'saturated'): string {
+  if (level === 'saturated') return '🌊';
+  if (level === 'soft') return '💧';
+  if (level === 'firm') return '🔥';
+  return '🟢';
 }
 
 function Row({

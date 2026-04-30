@@ -36,6 +36,7 @@ export type HourlyBlock = {
   cloud_cover: number[];
   uv_index: number[];
   surface_pressure: number[];
+  soil_moisture_0_to_10cm?: number[];
 };
 
 export type DailyBlock = {

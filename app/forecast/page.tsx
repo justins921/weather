@@ -6,6 +6,7 @@ import HourlyBars from '@/components/HourlyBars';
 import HourlyStrip from '@/components/HourlyStrip';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
+import AlertsBanner from '@/components/AlertsBanner';
 import GolfCard from '@/components/GolfCard';
 import MetricCard from '@/components/MetricCard';
 import PressureTrendLine from '@/components/PressureTrendLine';
@@ -13,6 +14,8 @@ import MinutelyChart from '@/components/MinutelyChart';
 import ModelAgreement from '@/components/ModelAgreement';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchBothModels } from '@/lib/api';
+import { fetchAlerts, type Alert } from '@/lib/alerts';
+import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
@@ -31,6 +34,8 @@ export default function ForecastPage() {
   const [loc, setLoc] = useState<Location | null>(null);
   const [gfs, setGfs] = useState<Forecast | null>(null);
   const [ecmwf, setEcmwf] = useState<Forecast | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
 
   useEffect(() => {
     const sel = getSelectedLocation();
@@ -47,6 +52,20 @@ export default function ForecastPage() {
         if (sel.elevation_ft === undefined && typeof g.elevation === 'number') {
           setLocationElevation(sel.id, g.elevation);
         }
+      })
+      .catch(() => {});
+    cachedFetch(`alerts:${sel.lat},${sel.lon}`, 5 * 60 * 1000, () =>
+      fetchAlerts(sel.lat, sel.lon),
+    )
+      .then((a) => {
+        if (!cancelled) setAlerts(a);
+      })
+      .catch(() => {});
+    cachedFetch(`aq:${sel.lat},${sel.lon}`, 30 * 60 * 1000, () =>
+      fetchAirQuality(sel.lat, sel.lon),
+    )
+      .then((aq) => {
+        if (!cancelled) setAirQuality(aq);
       })
       .catch(() => {});
     return () => {
@@ -111,6 +130,8 @@ export default function ForecastPage() {
         </button>
       </header>
 
+      {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
+
       <section>
         <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
           Right now
@@ -161,6 +182,8 @@ export default function ForecastPage() {
               surface_pressure_hpa: currentSurfacePressure(gfs),
               relative_humidity: c.relative_humidity_2m,
             }}
+            soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
+            airQuality={airQuality}
           />
         </div>
         {todayUv > 5 && (
@@ -199,6 +222,23 @@ export default function ForecastPage() {
       {ecmwf && <ModelAgreement gfs={gfs} ecmwf={ecmwf} />}
     </div>
   );
+}
+
+function currentHourlyValue<K extends keyof Forecast['hourly']>(
+  f: Forecast,
+  key: K,
+): number | undefined {
+  const arr = f.hourly[key];
+  if (!Array.isArray(arr)) return undefined;
+  const nowMs = Date.now();
+  let idx = 0;
+  for (let i = 0; i < f.hourly.time.length; i++) {
+    if (new Date(f.hourly.time[i]).getTime() >= nowMs) {
+      idx = Math.max(0, i - 1);
+      break;
+    }
+  }
+  return arr[idx] as number | undefined;
 }
 
 function currentSurfacePressure(f: Forecast): number {

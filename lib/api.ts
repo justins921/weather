@@ -34,6 +34,7 @@ const HOURLY_VARS = [
   'cloud_cover',
   'uv_index',
   'surface_pressure',
+  'soil_moisture_0_to_10cm',
 ].join(',');
 
 const DAILY_VARS = [

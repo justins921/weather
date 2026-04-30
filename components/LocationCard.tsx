@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchForecast } from '@/lib/api';
+import { fetchAlerts, type Alert } from '@/lib/alerts';
+import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { dewPointLabel, comingUpSentence, rightNowSentence, windArrow, windCardinal } from '@/lib/narrative';
@@ -10,6 +12,7 @@ import { playability } from '@/lib/playability';
 import { setSelectedId, setLocationElevation } from '@/lib/locations';
 import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
+import AlertsBanner from './AlertsBanner';
 import GolfCard from './GolfCard';
 import HourlyBars from './HourlyBars';
 import PressureTrendLine from './PressureTrendLine';
@@ -24,6 +27,8 @@ type Props = {
 export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }: Props) {
   const router = useRouter();
   const [data, setData] = useState<Forecast | null>(null);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,6 +46,22 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
       .catch((e: unknown) => {
         if (!cancelled) setErr(e instanceof Error ? e.message : 'Failed to load');
       });
+    // Alerts refresh more aggressively — severe weather changes fast.
+    cachedFetch(`alerts:${loc.lat},${loc.lon}`, 5 * 60 * 1000, () =>
+      fetchAlerts(loc.lat, loc.lon),
+    )
+      .then((a) => {
+        if (!cancelled) setAlerts(a);
+      })
+      .catch(() => {});
+    // Air quality refresh less aggressively.
+    cachedFetch(`aq:${loc.lat},${loc.lon}`, 30 * 60 * 1000, () =>
+      fetchAirQuality(loc.lat, loc.lon),
+    )
+      .then((aq) => {
+        if (!cancelled) setAirQuality(aq);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -156,6 +177,11 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   return (
     <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
       {header}
+      {alerts.length > 0 && (
+        <div className="mt-2">
+          <AlertsBanner alerts={alerts} compact={!expanded} />
+        </div>
+      )}
       {summary}
 
       {expanded && (
@@ -205,6 +231,8 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
               windSpeed={c.wind_speed_10m}
               gusts={c.wind_gusts_10m}
               airInputs={airInputsForCurrent(data, loc, c.apparent_temperature, c.relative_humidity_2m)}
+              soilMoisture={currentSoilMoisture(data)}
+              airQuality={airQuality}
             />
           </div>
 
@@ -221,6 +249,21 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
       )}
     </div>
   );
+}
+
+// Same idea as airInputsForCurrent but for soil moisture.
+function currentSoilMoisture(data: Forecast): number | undefined {
+  const arr = data.hourly.soil_moisture_0_to_10cm;
+  if (!arr) return undefined;
+  const nowMs = Date.now();
+  let idx = 0;
+  for (let i = 0; i < data.hourly.time.length; i++) {
+    if (new Date(data.hourly.time[i]).getTime() >= nowMs) {
+      idx = Math.max(0, i - 1);
+      break;
+    }
+  }
+  return arr[idx];
 }
 
 // Resolve the air-density inputs for "now" — pulls surface_pressure from the
