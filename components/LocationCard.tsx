@@ -16,10 +16,12 @@ import PressureTrendLine from './PressureTrendLine';
 
 type Props = {
   loc: Location;
+  expanded: boolean;
+  onToggleExpand: (id: string) => void;
   onRemove: (id: string) => void;
 };
 
-export default function LocationCard({ loc, onRemove }: Props) {
+export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }: Props) {
   const router = useRouter();
   const [data, setData] = useState<Forecast | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -32,7 +34,6 @@ export default function LocationCard({ loc, onRemove }: Props) {
       .then((d) => {
         if (cancelled) return;
         setData(d);
-        // Capture elevation back onto the location once we know it.
         if (loc.elevation_ft === undefined && typeof d.elevation === 'number') {
           setLocationElevation(loc.id, d.elevation);
         }
@@ -43,37 +44,78 @@ export default function LocationCard({ loc, onRemove }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [loc.lat, loc.lon]);
+  }, [loc.lat, loc.lon, loc.id, loc.elevation_ft]);
 
-  function open() {
+  function navigate() {
     setSelectedId(loc.id);
     router.push('/forecast');
   }
 
+  function toggle() {
+    onToggleExpand(loc.id);
+  }
+
+  // Header chunk used by every variant — name, optional pin, expand chevron,
+  // remove button. The whole header row is the toggle target.
+  const header = (
+    <div
+      className="flex cursor-pointer items-center justify-between gap-2"
+      onClick={toggle}
+      role="button"
+      tabIndex={0}
+      aria-expanded={expanded}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          toggle();
+        }
+      }}
+    >
+      <h2 className="flex min-w-0 items-center gap-1 text-lg font-semibold">
+        {loc.isCurrent && (
+          <span aria-label="Current location" title="Current location">
+            📍
+          </span>
+        )}
+        <span className="truncate">{loc.name}</span>
+      </h2>
+      <div className="flex shrink-0 items-center gap-1">
+        <span
+          className="text-fg-light/50 transition-transform dark:text-fg-dark/50"
+          style={{ display: 'inline-block', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+          aria-hidden
+        >
+          ⌄
+        </span>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onRemove(loc.id);
+          }}
+          className="px-2 py-1 text-fg-light/40 hover:text-fg-light/80 dark:text-fg-dark/40 dark:hover:text-fg-dark/80"
+          aria-label={`Remove ${loc.name}`}
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+
+  // Error state (renders header so the user can still collapse/remove).
   if (err) {
     return (
       <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
-          <button
-            onClick={() => onRemove(loc.id)}
-            className="text-fg-light/40 hover:text-fg-light/80 dark:text-fg-dark/40 dark:hover:text-fg-dark/80"
-            aria-label="Remove"
-          >
-            ×
-          </button>
-        </div>
+        {header}
         <div className="mt-2 text-sm text-red-500">{err}</div>
       </div>
     );
   }
 
+  // Loading state.
   if (!data) {
     return (
       <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
-        </div>
+        {header}
         <div className="mt-2 text-sm text-fg-light/50 dark:text-fg-dark/50">Loading…</div>
       </div>
     );
@@ -90,90 +132,93 @@ export default function LocationCard({ loc, onRemove }: Props) {
     cloud_cover: c.cloud_cover,
   });
 
-
-  return (
-    <div
-      className="cursor-pointer rounded-2xl bg-card-light p-4 transition hover:bg-black/5 dark:bg-card-dark dark:hover:bg-white/5"
-      onClick={open}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') open();
-      }}
-    >
-      <div className="flex items-start justify-between">
-        <h2 className="text-lg font-semibold">{loc.isCurrent && <span aria-label="Current location" title="Current location" className="mr-1">📍</span>}{loc.name}</h2>
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onRemove(loc.id);
-          }}
-          className="-mr-1 -mt-1 px-2 py-1 text-fg-light/40 hover:text-fg-light/80 dark:text-fg-dark/40 dark:hover:text-fg-dark/80"
-          aria-label={`Remove ${loc.name}`}
-        >
-          ×
-        </button>
-      </div>
-
-      <div className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-        Right now
-      </div>
-      <div className="text-base">{rightNowSentence(data)}</div>
-
-      <div className="mt-3 flex items-center gap-4">
-        <div className="text-5xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</div>
+  // Compact summary row — visible whether collapsed or expanded.
+  const summary = (
+    <div className="mt-2 flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</span>
         <div>
-          <div className="text-5xl font-semibold leading-none">{fmtTemp(c.temperature_2m)}</div>
-          <div className="mt-1 text-xs text-fg-light/60 dark:text-fg-dark/60">
+          <div className="text-2xl font-semibold leading-none">{fmtTemp(c.temperature_2m)}</div>
+          <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
             Feels {fmtTemp(c.apparent_temperature)}
           </div>
         </div>
       </div>
+      <span
+        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
+        style={{ background: score.color }}
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label} · {score.score}
+      </span>
+    </div>
+  );
 
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-            Wind
-          </div>
-          <div className="mt-1 text-base font-semibold">
-            {fmtMph(c.wind_speed_10m)} {windArrow(c.wind_direction_10m)}
-          </div>
-          <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
-          </div>
-          <PressureTrendLine forecast={data} />
-        </div>
-        <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-            Dew Point
-          </div>
-          <div className="mt-1 text-base font-semibold">
-            {fmtTemp(c.dew_point_2m)} 💧
-          </div>
-          <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            {dewPointLabel(c.dew_point_2m)}
-          </div>
-        </div>
-      </div>
+  return (
+    <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+      {header}
+      {summary}
 
-      <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-        Coming up
-      </div>
-      <div className="text-sm">{comingUpSentence(data)}</div>
+      {expanded && (
+        <>
+          <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+            Right now
+          </div>
+          <div className="text-sm">{rightNowSentence(data)}</div>
 
-      <div className="mt-3">
-        <HourlyBars forecast={data} height={28} />
-      </div>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+                Wind
+              </div>
+              <div className="mt-1 text-base font-semibold">
+                {fmtMph(c.wind_speed_10m)} {windArrow(c.wind_direction_10m)}
+              </div>
+              <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
+                From the {windCardinal(c.wind_direction_10m)}. Gusts to {Math.round(c.wind_gusts_10m)}mph.
+              </div>
+              <PressureTrendLine forecast={data} />
+            </div>
+            <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+                Dew Point
+              </div>
+              <div className="mt-1 text-base font-semibold">{fmtTemp(c.dew_point_2m)} 💧</div>
+              <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
+                {dewPointLabel(c.dew_point_2m)}
+              </div>
+            </div>
+          </div>
 
-      <div className="mt-4">
-        <GolfCard
-          compact
-          playability={score}
-          windSpeed={c.wind_speed_10m}
-          gusts={c.wind_gusts_10m}
-          airInputs={airInputsForCurrent(data, loc, c.apparent_temperature, c.relative_humidity_2m)}
-        />
-      </div>
+          <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+            Coming up
+          </div>
+          <div className="text-sm">{comingUpSentence(data)}</div>
+
+          <div className="mt-3">
+            <HourlyBars forecast={data} height={28} />
+          </div>
+
+          <div className="mt-4">
+            <GolfCard
+              compact
+              playability={score}
+              windSpeed={c.wind_speed_10m}
+              gusts={c.wind_gusts_10m}
+              airInputs={airInputsForCurrent(data, loc, c.apparent_temperature, c.relative_humidity_2m)}
+            />
+          </div>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate();
+            }}
+            className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-accent-light dark:text-accent-dark"
+          >
+            View detailed forecast →
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -202,4 +247,3 @@ function airInputsForCurrent(
     relative_humidity: humidity,
   };
 }
-

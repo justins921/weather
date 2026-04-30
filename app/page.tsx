@@ -7,22 +7,25 @@ import LocationSearch from '@/components/LocationSearch';
 import { reverseGeocode } from '@/lib/api';
 import {
   addLocation,
+  getExpandedIds,
   loadLocations,
   removeLocation as removeLoc,
   setCurrentLocation,
+  setExpandedIds,
+  toggleExpanded,
 } from '@/lib/locations';
 import type { Location } from '@/lib/types';
 
 export default function LocationsPage() {
   const [locations, setLocations] = useState<Location[]>([]);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const [updatedAt, setUpdatedAt] = useState<Date>(new Date());
 
   useEffect(() => {
     const initial = loadLocations();
     setLocations(initial);
+    setExpanded(getExpandedIds());
 
-    // Refresh the current location's coordinates on every app load so weather
-    // follows the user as they move. We don't trust cached lat/lon.
     const current = initial.find((l) => l.isCurrent);
     if (current && typeof navigator !== 'undefined' && 'geolocation' in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -33,10 +36,7 @@ export default function LocationsPage() {
           setLocations(setCurrentLocation({ lat, lon, name }));
           setUpdatedAt(new Date());
         },
-        () => {
-          // Permission denied or unavailable — keep stale coords; user can disable
-          // by removing the card.
-        },
+        () => {},
         { enableHighAccuracy: false, timeout: 10000, maximumAge: 0 },
       );
     }
@@ -51,7 +51,23 @@ export default function LocationsPage() {
     setLocations(removeLoc(id));
   }
 
+  function handleToggleExpand(id: string) {
+    setExpanded(toggleExpanded(id));
+  }
+
+  function expandAll() {
+    const next = new Set(locations.map((l) => l.id));
+    setExpandedIds(next);
+    setExpanded(next);
+  }
+
+  function collapseAll() {
+    setExpandedIds([]);
+    setExpanded(new Set());
+  }
+
   const hasCurrent = locations.some((l) => l.isCurrent);
+  const allExpanded = locations.length > 0 && locations.every((l) => expanded.has(l.id));
 
   return (
     <div className="px-4 pt-6">
@@ -66,9 +82,28 @@ export default function LocationsPage() {
         />
         <LocationSearch onAdd={handleAdd} />
       </div>
-      <div className="mt-6 grid grid-cols-1 gap-3 md:grid-cols-2">
+      {locations.length > 1 && (
+        <div className="mt-4 flex items-center justify-between text-xs text-fg-light/60 dark:text-fg-dark/60">
+          <span>
+            {locations.length} {locations.length === 1 ? 'location' : 'locations'}
+          </span>
+          <button
+            onClick={allExpanded ? collapseAll : expandAll}
+            className="text-accent-light dark:text-accent-dark"
+          >
+            {allExpanded ? 'Collapse all' : 'Expand all'}
+          </button>
+        </div>
+      )}
+      <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
         {locations.map((loc) => (
-          <LocationCard key={loc.id} loc={loc} onRemove={handleRemove} />
+          <LocationCard
+            key={loc.id}
+            loc={loc}
+            expanded={expanded.has(loc.id)}
+            onToggleExpand={handleToggleExpand}
+            onRemove={handleRemove}
+          />
         ))}
         {locations.length === 0 && (
           <div className="rounded-2xl bg-card-light p-6 text-center text-sm text-fg-light/60 dark:bg-card-dark dark:text-fg-dark/60">

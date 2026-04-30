@@ -4,11 +4,25 @@ import type { Location } from './types';
 
 const LOCATIONS_KEY = 'weather.locations';
 const SELECTED_KEY = 'weather.selectedLocationId';
+const DEFAULTS_VERSION_KEY = 'weather.defaultsVersion';
+const EXPANDED_KEY = 'weather.expandedIds';
+
+// Bump when adding new entries to DEFAULT_LOCATIONS. On load, any default
+// whose id isn't already in the saved list gets appended once. Removing a
+// default by hand still sticks (we only run this once per version bump).
+const CURRENT_DEFAULTS_VERSION = 2;
 
 export const DEFAULT_LOCATIONS: Location[] = [
   { id: 'lake-breeze', name: 'Lake Breeze', lat: 44.0847, lon: -88.5426 },
   { id: 'westhaven', name: 'Westhaven', lat: 44.0289, lon: -88.5879 },
   { id: 'home', name: 'Home', lat: 44.0247, lon: -88.5426 },
+  // Coordinates below come from Open-Meteo's geocoder for the closest
+  // recognised place; the forecast grid is ~10km so course-vs-city is
+  // effectively the same. Tune via "Add by coordinates" if you want exact.
+  { id: 'utica-gc', name: 'Utica Golf Club', lat: 44.0247, lon: -88.5426 },
+  { id: 'tpc-danzante-bay', name: 'TPC Danzante Bay', lat: 26.0122, lon: -111.3489 },
+  { id: 'wisconsin-cc', name: 'Wisconsin CC', lat: 43.1353, lon: -87.9356 },
+  { id: 'tpc-wisconsin', name: 'TPC Wisconsin', lat: 42.9908, lon: -89.5332 },
 ];
 
 function isBrowser(): boolean {
@@ -29,10 +43,25 @@ export function loadLocations(): Location[] {
     const raw = window.localStorage.getItem(LOCATIONS_KEY);
     if (!raw) {
       window.localStorage.setItem(LOCATIONS_KEY, JSON.stringify(DEFAULT_LOCATIONS));
+      window.localStorage.setItem(DEFAULTS_VERSION_KEY, String(CURRENT_DEFAULTS_VERSION));
       return DEFAULT_LOCATIONS;
     }
-    const parsed = JSON.parse(raw) as Location[];
+    let parsed = JSON.parse(raw) as Location[];
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_LOCATIONS;
+    // One-shot migration: add any new defaults the user hasn't seen yet.
+    const savedVersion = parseInt(
+      window.localStorage.getItem(DEFAULTS_VERSION_KEY) ?? '0',
+      10,
+    );
+    if (savedVersion < CURRENT_DEFAULTS_VERSION) {
+      const existingIds = new Set(parsed.map((l) => l.id));
+      const newDefaults = DEFAULT_LOCATIONS.filter((d) => !existingIds.has(d.id));
+      if (newDefaults.length > 0) {
+        parsed = [...parsed, ...newDefaults];
+        window.localStorage.setItem(LOCATIONS_KEY, JSON.stringify(sortCurrentFirst(parsed)));
+      }
+      window.localStorage.setItem(DEFAULTS_VERSION_KEY, String(CURRENT_DEFAULTS_VERSION));
+    }
     return sortCurrentFirst(parsed);
   } catch {
     return DEFAULT_LOCATIONS;
@@ -121,4 +150,31 @@ function slugify(s: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+// Expand/collapse state. Cards default to collapsed (so the dashboard stays
+// scannable). The ids of expanded cards live in localStorage so the choice
+// survives reloads.
+export function getExpandedIds(): Set<string> {
+  if (!isBrowser()) return new Set();
+  try {
+    const raw = window.localStorage.getItem(EXPANDED_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+export function setExpandedIds(ids: Iterable<string>): void {
+  if (!isBrowser()) return;
+  window.localStorage.setItem(EXPANDED_KEY, JSON.stringify([...ids]));
+}
+
+export function toggleExpanded(id: string): Set<string> {
+  const ids = getExpandedIds();
+  if (ids.has(id)) ids.delete(id);
+  else ids.add(id);
+  setExpandedIds(ids);
+  return ids;
 }
