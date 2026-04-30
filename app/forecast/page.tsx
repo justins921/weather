@@ -163,12 +163,22 @@ export default function ForecastPage() {
           Right now
         </div>
         <div className="text-base">{rightNowSentence(gfs, obs)}</div>
-        {obsFresh && obs && (
-          <div className="mt-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
-            Measured at {obs.sourceName ?? obs.stationId}
-            {obsSourceLabel(obs)} · {fmtObsTime(obs.observedAt)}
-          </div>
-        )}
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
+          {obsFresh && obs && (
+            <span>
+              Measured at {obs.sourceName ?? obs.stationId}
+              {obsSourceLabel(obs)} · {fmtObsTime(obs.observedAt)}
+            </span>
+          )}
+          <a
+            href={`https://www.wunderground.com/wundermap?lat=${loc.lat}&lon=${loc.lon}&zoom=11&pws=1`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-accent-light dark:text-accent-dark"
+          >
+            Nearby stations ↗
+          </a>
+        </div>
         <div className="mt-3 flex items-center gap-4">
           <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</div>
           <div>

@@ -219,15 +219,26 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             Right now
           </div>
           <div className="text-sm">{rightNowSentence(data, obs)}</div>
-          {obsFresh && obs && (
-            <div className="mt-1 text-[10px] text-fg-light/40 dark:text-fg-dark/40">
-              Obs: {obs.sourceName ?? obs.stationId}
-              {obs.network || typeof obs.distanceKm === 'number'
-                ? ` (${[obs.network, typeof obs.distanceKm === 'number' ? `${obs.distanceKm.toFixed(1)}km` : null].filter(Boolean).join(', ')})`
-                : ''}{' '}
-              · {fmtObsTime(obs.observedAt)}
-            </div>
-          )}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-fg-light/40 dark:text-fg-dark/40">
+            {obsFresh && obs && (
+              <span>
+                Obs: {obs.sourceName ?? obs.stationId}
+                {obs.network || typeof obs.distanceKm === 'number'
+                  ? ` (${[obs.network, typeof obs.distanceKm === 'number' ? `${obs.distanceKm.toFixed(1)}km` : null].filter(Boolean).join(', ')})`
+                  : ''}{' '}
+                · {fmtObsTime(obs.observedAt)}
+              </span>
+            )}
+            <a
+              href={`https://www.wunderground.com/wundermap?lat=${loc.lat}&lon=${loc.lon}&zoom=11&pws=1`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="text-accent-light dark:text-accent-dark"
+            >
+              Nearby stations ↗
+            </a>
+          </div>
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
