@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchForecast } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
-import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
+import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
+import AirQualityCard from './AirQualityCard';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
 import { dewPointLabel, comingUpSentence, rightNowSentence, windArrow, windCardinal } from '@/lib/narrative';
@@ -29,7 +30,7 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   const router = useRouter();
   const [data, setData] = useState<Forecast | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
+  const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -281,9 +282,13 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
               gusts={displayGusts}
               airInputs={airInputsForCurrent(data, loc, displayFeels, displayHumidity)}
               soilMoisture={currentSoilMoisture(data)}
-              airQuality={airQuality}
             />
           </div>
+          {airQuality && (
+            <div className="mt-3">
+              <AirQualityCard data={airQuality} />
+            </div>
+          )}
 
           <button
             onClick={(e) => {

@@ -15,7 +15,8 @@ import ModelAgreement from '@/components/ModelAgreement';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchBothModels } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
-import { fetchAirQuality, type AirQuality } from '@/lib/airQuality';
+import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
+import AirQualityCard from '@/components/AirQualityCard';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
@@ -36,7 +37,7 @@ export default function ForecastPage() {
   const [gfs, setGfs] = useState<Forecast | null>(null);
   const [ecmwf, setEcmwf] = useState<Forecast | null>(null);
   const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [airQuality, setAirQuality] = useState<AirQuality | null>(null);
+  const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
 
   useEffect(() => {
@@ -225,8 +226,10 @@ export default function ForecastPage() {
               relative_humidity: displayHumidity,
             }}
             soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
-            airQuality={airQuality}
           />
+        </div>
+        <div className="mt-2">
+          <AirQualityCard data={airQuality} />
         </div>
         {todayUv > 5 && (
           <div className="mt-2">

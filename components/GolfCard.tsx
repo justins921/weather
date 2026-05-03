@@ -6,7 +6,6 @@ import {
   playsYards,
   type ConditionsInput,
 } from '@/lib/airDensity';
-import { airQualityHint, type AirQuality } from '@/lib/airQuality';
 import { clubsForWind, formatClubs } from '@/lib/clubWind';
 import { courseConditions } from '@/lib/courseConditions';
 import type { PlayabilityResult } from '@/lib/playability';
@@ -16,9 +15,8 @@ type Props = {
   windSpeed: number;
   gusts: number;
   airInputs: ConditionsInput;
-  // Optional supplementary signals — render only when meaningful.
+  // Optional supplementary signal — render only when meaningful.
   soilMoisture?: number;
-  airQuality?: AirQuality | null;
   // Slimmer chrome for use as a sub-card inside an existing card (dashboard).
   compact?: boolean;
 };
@@ -33,7 +31,6 @@ export default function GolfCard({
   gusts,
   airInputs,
   soilMoisture,
-  airQuality,
   compact,
 }: Props) {
   const sustained = clubsForWind(windSpeed);
@@ -46,7 +43,6 @@ export default function GolfCard({
   const reason = playsReason(airInputs);
 
   const course = courseConditions(soilMoisture);
-  const aq = airQualityHint(airQuality ?? null);
 
   const wrapper = compact
     ? 'rounded-xl bg-black/5 p-3 dark:bg-white/5'
@@ -85,13 +81,6 @@ export default function GolfCard({
             🎯 {playsLabel(yards)}
           </span>
         </Row>
-        {aq && (
-          <Row label="Air Quality" hint={aq.hint}>
-            <span className="text-sm font-semibold" style={{ color: aq.color }}>
-              😷 {aq.label}
-            </span>
-          </Row>
-        )}
       </div>
     </section>
   );
