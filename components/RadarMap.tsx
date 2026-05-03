@@ -34,13 +34,25 @@ function Recenter({ lat, lon, trigger }: { lat: number; lon: number; trigger: nu
   return null;
 }
 
-type LayerKind = 'rain' | 'clouds';
+// Three modes for the layer toggle:
+//   radar  — precipitation only (default)
+//   sat    — IR satellite only (cloud cover, see weather coming hours
+//            before it shows on radar)
+//   both   — satellite as base @40% opacity, radar overlaid on top
+type LayerKind = 'radar' | 'sat' | 'both';
+
+const LAYER_CYCLE: LayerKind[] = ['radar', 'sat', 'both'];
+const LAYER_LABEL: Record<LayerKind, string> = {
+  radar: 'Radar',
+  sat: 'Sat',
+  both: 'Sat+Radar',
+};
 
 export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = false }: Props) {
   const [rv, setRv] = useState<RainViewerData | null>(null);
   const [frameIdx, setFrameIdx] = useState(0);
   const [playing, setPlaying] = useState(false);
-  const [layer, setLayer] = useState<LayerKind>('rain');
+  const [layer, setLayer] = useState<LayerKind>('radar');
   const [centerTick, setCenterTick] = useState(0);
   const playRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -55,13 +67,26 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
     load().catch(() => {});
   }, []);
 
+  // Time axis: radar in radar/both modes, satellite in sat mode. We scrub
+  // along whichever feed drives the active layer's primary visual.
   const frames: RainViewerFrame[] = useMemo(() => {
     if (!rv) return [];
-    if (layer === 'clouds') return rv.satellite.infrared;
+    if (layer === 'sat') return rv.satellite.infrared;
     return [...rv.radar.past, ...rv.radar.nowcast];
   }, [rv, layer]);
 
   const pastCount = rv ? rv.radar.past.length : 0;
+
+  // Reset frame index when switching layers so we're at the most-recent
+  // frame of the new feed, not a stale offset.
+  useEffect(() => {
+    if (!rv) return;
+    if (layer === 'sat') {
+      setFrameIdx(Math.max(0, rv.satellite.infrared.length - 1));
+    } else {
+      setFrameIdx(Math.max(0, rv.radar.past.length - 1));
+    }
+  }, [layer, rv]);
 
   useEffect(() => {
     if (!playing || frames.length === 0) return;
@@ -74,13 +99,46 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
   }, [playing, frames.length]);
 
   const currentFrame = frames[frameIdx];
-  const isNowcast = layer === 'rain' && frameIdx >= pastCount;
+  const isNowcast = (layer === 'radar' || layer === 'both') && frameIdx >= pastCount;
 
-  const tilePath = (frame: RainViewerFrame) => {
-    if (!rv) return '';
-    const opts = layer === 'clouds' ? '0/1_0' : '4/1_1'; // color scheme + smooth + snow
-    return `${rv.host}${frame.path}/256/{z}/{x}/{y}/${opts}.png`;
+  const radarTile = (frame: RainViewerFrame, opacity: number, key: string) => {
+    if (!rv) return null;
+    const opts = '4/1_1'; // colour scheme 4 + smooth + snow
+    return (
+      <TileLayer
+        key={`r-${frame.path}-${key}`}
+        url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/${opts}.png`}
+        opacity={opacity}
+      />
+    );
   };
+  const satTile = (frame: RainViewerFrame, opacity: number, key: string) => {
+    if (!rv) return null;
+    const opts = '0/0_0'; // satellite colour scheme + smooth
+    return (
+      <TileLayer
+        key={`s-${frame.path}-${key}`}
+        url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/${opts}.png`}
+        opacity={opacity}
+      />
+    );
+  };
+
+  // Pick the satellite frame closest in time to the current radar frame so
+  // the two layers stay roughly in sync when playing in 'both' mode.
+  const matchingSatFrame = useMemo(() => {
+    if (!rv || !currentFrame || layer !== 'both') return null;
+    let best = rv.satellite.infrared[0];
+    let bestDelta = Infinity;
+    for (const f of rv.satellite.infrared) {
+      const d = Math.abs(f.time - currentFrame.time);
+      if (d < bestDelta) {
+        bestDelta = d;
+        best = f;
+      }
+    }
+    return best ?? null;
+  }, [rv, currentFrame, layer]);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-2xl" style={{ height }}>
@@ -95,12 +153,13 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap"
         />
-        {currentFrame && (
-          <TileLayer
-            key={`${layer}-${currentFrame.path}`}
-            url={tilePath(currentFrame)}
-            opacity={0.7}
-          />
+        {currentFrame && layer === 'sat' && satTile(currentFrame, 0.85, 'sat')}
+        {currentFrame && layer === 'radar' && radarTile(currentFrame, 0.7, 'radar')}
+        {currentFrame && layer === 'both' && (
+          <>
+            {matchingSatFrame && satTile(matchingSatFrame, 0.4, 'satbase')}
+            {radarTile(currentFrame, 0.85, 'radarover')}
+          </>
         )}
         <Marker position={[lat, lon]} icon={pinIcon} />
         <Recenter lat={lat} lon={lon} trigger={centerTick} />
@@ -108,10 +167,12 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
 
       {full && (
         <>
-          <Legend />
+          <Legend layer={layer} />
           <ControlStack
             onLocate={() => setCenterTick((t) => t + 1)}
-            onToggleLayer={() => setLayer((l) => (l === 'rain' ? 'clouds' : 'rain'))}
+            onCycleLayer={() =>
+              setLayer((l) => LAYER_CYCLE[(LAYER_CYCLE.indexOf(l) + 1) % LAYER_CYCLE.length])
+            }
             onRefresh={() => load()}
             layer={layer}
           />
@@ -129,31 +190,53 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
   );
 }
 
-function Legend() {
+function Legend({ layer }: { layer: LayerKind }) {
   return (
     <div className="pointer-events-none absolute left-1/2 top-3 z-[400] -translate-x-1/2">
       <div className="flex items-center gap-3 rounded-full bg-white/80 px-3 py-1.5 text-[10px] font-medium text-black shadow-md backdrop-blur dark:bg-black/70 dark:text-white">
-        <div className="flex items-center gap-1.5">
-          <span>🌧️</span>
-          <span>Light</span>
-          <div
-            className="h-1.5 w-12 rounded-full"
-            style={{
-              background: 'linear-gradient(to right, #4ade80, #facc15, #f97316, #ef4444, #a855f7)',
-            }}
-          />
-          <span>Heavy</span>
-        </div>
-        <div className="h-3 w-px bg-black/20 dark:bg-white/20" />
-        <div className="flex items-center gap-1.5">
-          <span>❄️</span>
-          <span>Light</span>
-          <div
-            className="h-1.5 w-10 rounded-full"
-            style={{ background: 'linear-gradient(to right, #bae6fd, #2563eb)' }}
-          />
-          <span>Heavy</span>
-        </div>
+        {(layer === 'radar' || layer === 'both') && (
+          <>
+            <div className="flex items-center gap-1.5">
+              <span>🌧️</span>
+              <span>Light</span>
+              <div
+                className="h-1.5 w-12 rounded-full"
+                style={{
+                  background:
+                    'linear-gradient(to right, #4ade80, #facc15, #f97316, #ef4444, #a855f7)',
+                }}
+              />
+              <span>Heavy</span>
+            </div>
+            <div className="h-3 w-px bg-black/20 dark:bg-white/20" />
+            <div className="flex items-center gap-1.5">
+              <span>❄️</span>
+              <span>Light</span>
+              <div
+                className="h-1.5 w-10 rounded-full"
+                style={{ background: 'linear-gradient(to right, #bae6fd, #2563eb)' }}
+              />
+              <span>Heavy</span>
+            </div>
+          </>
+        )}
+        {(layer === 'sat' || layer === 'both') && (
+          <>
+            {layer === 'both' && <div className="h-3 w-px bg-black/20 dark:bg-white/20" />}
+            <div className="flex items-center gap-1.5">
+              <span>☁️</span>
+              <span>Thin</span>
+              <div
+                className="h-1.5 w-10 rounded-full"
+                style={{
+                  background: 'linear-gradient(to right, #d1d5db, #6b7280, #ffffff)',
+                  border: '1px solid rgba(0,0,0,0.1)',
+                }}
+              />
+              <span>Thick</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -161,25 +244,30 @@ function Legend() {
 
 function ControlStack({
   onLocate,
-  onToggleLayer,
+  onCycleLayer,
   onRefresh,
   layer,
 }: {
   onLocate: () => void;
-  onToggleLayer: () => void;
+  onCycleLayer: () => void;
   onRefresh: () => void;
   layer: LayerKind;
 }) {
   const btn =
     'flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg shadow-md transition hover:bg-white/90 dark:bg-black/80 dark:text-white';
   return (
-    <div className="absolute right-3 top-16 z-[400] flex flex-col gap-2">
+    <div className="absolute right-3 top-16 z-[400] flex flex-col items-center gap-2">
       <button onClick={onLocate} className={btn} aria-label="Recenter">
         📍
       </button>
-      <button onClick={onToggleLayer} className={btn} aria-label={`Layer: ${layer}`}>
-        {layer === 'rain' ? '🌧️' : '☁️'}
-      </button>
+      <div className="flex flex-col items-center">
+        <button onClick={onCycleLayer} className={btn} aria-label={`Layer: ${LAYER_LABEL[layer]}`}>
+          📚
+        </button>
+        <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-semibold text-black shadow dark:bg-black/80 dark:text-white">
+          {LAYER_LABEL[layer]}
+        </span>
+      </div>
       <button onClick={onRefresh} className={btn} aria-label="Refresh">
         🔄
       </button>
