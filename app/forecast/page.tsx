@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import HourlyBars from '@/components/HourlyBars';
+import ForecastDiscussion from '@/components/ForecastDiscussion';
 import HourlyStrip from '@/components/HourlyStrip';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
@@ -246,7 +247,7 @@ export default function ForecastPage() {
         <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
           Coming up
         </div>
-        <div className="text-base">{comingUpSentence(gfs)}</div>
+        <div className="text-base">{comingUpSentence(gfs, alerts)}</div>
         <div className="mt-3">
           <HourlyBars forecast={gfs} height={36} />
         </div>
@@ -259,6 +260,8 @@ export default function ForecastPage() {
       )}
 
       <HourlyStrip forecast={gfs} />
+
+      <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
 
       <InlineRadar lat={loc.lat} lon={loc.lon} />
 

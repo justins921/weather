@@ -1,8 +1,12 @@
 'use client';
 
+import { NWS_HEADERS } from './nws';
+
 // NWS station observations — actual measured weather, US-only. We resolve
 // the nearest ASOS/AWOS station once per coordinate (caches forever in-tab),
-// then refetch the latest observation on a short TTL.
+// then refetch the latest observation on a short TTL. NWS asks every
+// consumer to identify itself in the User-Agent header; the shared header
+// constant lives in lib/nws.ts.
 
 export type Observation = {
   stationId: string;
@@ -40,7 +44,7 @@ async function findStationId(lat: number, lon: number): Promise<string | null> {
   if (stationIdCache.has(key)) return stationIdCache.get(key)!;
   try {
     const ptsRes = await fetch(`${POINTS_URL}/${lat},${lon}`, {
-      headers: { Accept: 'application/geo+json' },
+      headers: NWS_HEADERS,
     });
     if (!ptsRes.ok) {
       stationIdCache.set(key, null);
@@ -52,7 +56,7 @@ async function findStationId(lat: number, lon: number): Promise<string | null> {
       stationIdCache.set(key, null);
       return null;
     }
-    const stRes = await fetch(stationsUrl, { headers: { Accept: 'application/geo+json' } });
+    const stRes = await fetch(stationsUrl, { headers: NWS_HEADERS });
     if (!stRes.ok) {
       stationIdCache.set(key, null);
       return null;
@@ -118,7 +122,7 @@ export async function fetchNWSObservation(lat: number, lon: number): Promise<Obs
   if (!stationId) return null;
   try {
     const res = await fetch(`${STATIONS_URL}/${stationId}/observations/latest`, {
-      headers: { Accept: 'application/geo+json' },
+      headers: NWS_HEADERS,
     });
     if (!res.ok) return null;
     const data = (await res.json()) as NWSObservation;

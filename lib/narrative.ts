@@ -1,4 +1,5 @@
 // Rules-based narrative generator. No LLM. Edit the strings to taste.
+import { isHighSeverity, type Alert } from './alerts';
 import { clubsForWind, formatClubs } from './clubWind';
 import { isObsRecent, minutelyPrecipNow, type Observation } from './observations';
 import { pressureTrend } from './pressureTrend';
@@ -36,7 +37,23 @@ function fmtHour(iso: string, timezone?: string): string {
   return new Intl.DateTimeFormat('en-US', opts).format(d).toLowerCase().replace(' ', '');
 }
 
-export function comingUpSentence(f: Forecast): string {
+// When a Severe or Extreme NWS alert is active, prepend it to whatever the
+// model rules would otherwise say. Done here (not at the call site) so the
+// alert sits in the same place as the regular forecast summary.
+export function comingUpSentence(f: Forecast, alerts: Alert[] = []): string {
+  const top = alerts.find((a) => isHighSeverity(a.severity));
+  const base = comingUpFromForecast(f);
+  if (top) {
+    const expires = top.endsAt ?? top.expiresAt;
+    const until = expires
+      ? ` until ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: f.timezone }).format(new Date(expires)).toLowerCase().replace(' ', '')}`
+      : '';
+    return `⚠️ ${top.event}${until}. ${base}`;
+  }
+  return base;
+}
+
+function comingUpFromForecast(f: Forecast): string {
   const tz = f.timezone;
   const h = f.hourly;
   // Index 0 of hourly may be earlier today (Open-Meteo gives full day). Find "now" index.

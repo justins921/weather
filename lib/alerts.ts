@@ -1,9 +1,12 @@
 'use client';
 
+import { NWS_HEADERS } from './nws';
+
 // NWS Active Alerts — National Weather Service, US-only, no key.
 // Endpoint returns watches/warnings/advisories near a coordinate; non-US
 // locations (e.g., TPC Danzante Bay in Mexico) just return zero features
-// and we render nothing.
+// and we render nothing. NWS asks every consumer to identify itself in
+// the User-Agent header — see lib/nws.ts.
 
 export type Alert = {
   id: string;
@@ -32,12 +35,9 @@ type NWSResponse = {
 };
 
 export async function fetchAlerts(lat: number, lon: number): Promise<Alert[]> {
-  // NWS occasionally rejects requests without an Accept header on geo+json.
   const url = `https://api.weather.gov/alerts/active?point=${lat},${lon}`;
   try {
-    const res = await fetch(url, {
-      headers: { Accept: 'application/geo+json' },
-    });
+    const res = await fetch(url, { headers: NWS_HEADERS });
     if (!res.ok) return [];
     const data = (await res.json()) as NWSResponse;
     return (data.features ?? [])
@@ -66,12 +66,19 @@ export function severityRank(s: Alert['severity']): number {
   return 0;
 }
 
+// Spec-mandated palette: red / orange / yellow / blue.
 export function alertColor(severity: Alert['severity']): string {
   if (severity === 'Extreme') return '#dc2626';
-  if (severity === 'Severe') return '#ef4444';
-  if (severity === 'Moderate') return '#f97316';
-  if (severity === 'Minor') return '#eab308';
+  if (severity === 'Severe') return '#ea580c';
+  if (severity === 'Moderate') return '#ca8a04';
+  if (severity === 'Minor') return '#2563eb';
   return '#6b7280';
+}
+
+// True for alerts that warrant interrupting the user's workflow with a
+// big-deal indicator (and the comingUpSentence prefix).
+export function isHighSeverity(s: Alert['severity']): boolean {
+  return s === 'Severe' || s === 'Extreme';
 }
 
 export function alertEmoji(event: string): string {

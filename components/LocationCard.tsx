@@ -268,7 +268,7 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
           <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
             Coming up
           </div>
-          <div className="text-sm">{comingUpSentence(data)}</div>
+          <div className="text-sm">{comingUpSentence(data, alerts)}</div>
 
           <div className="mt-3">
             <HourlyBars forecast={data} height={28} />

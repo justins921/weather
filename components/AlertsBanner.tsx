@@ -9,56 +9,68 @@ type Props = {
   compact?: boolean;
 };
 
-// Renders a banner for the most severe active alert, with an expandable
-// disclosure for additional alerts. Returns null when there are none.
+// Renders a banner per active alert (most-severe first), each tappable to
+// expand the full description text. Returns null when there are none.
 export default function AlertsBanner({ alerts, compact = false }: Props) {
-  const [open, setOpen] = useState(false);
   if (alerts.length === 0) return null;
-  const top = alerts[0];
-  const others = alerts.slice(1);
+  return (
+    <div className="space-y-2">
+      {alerts.map((a) => (
+        <AlertCard key={a.id || a.event} alert={a} compact={compact} />
+      ))}
+    </div>
+  );
+}
 
+function AlertCard({ alert: a, compact }: { alert: Alert; compact: boolean }) {
+  const [open, setOpen] = useState(false);
   const padding = compact ? 'px-3 py-2' : 'px-4 py-3';
   const titleSize = compact ? 'text-xs' : 'text-sm';
 
+  const hasDescription = !!a.description.trim();
+
   return (
-    <div
-      className={`rounded-xl ${padding} text-white`}
-      style={{ background: alertColor(top.severity) }}
-      role="alert"
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (hasDescription) setOpen((s) => !s);
+      }}
+      className={`block w-full rounded-xl text-left ${padding} text-white ${
+        hasDescription ? 'cursor-pointer' : 'cursor-default'
+      }`}
+      style={{ background: alertColor(a.severity) }}
+      aria-expanded={open}
     >
       <div className={`flex items-start justify-between gap-2 ${titleSize} font-semibold`}>
         <span className="flex items-start gap-2">
-          <span className="leading-tight">{alertEmoji(top.event)}</span>
-          <span>{top.event}</span>
+          <span className="leading-tight">{alertEmoji(a.event)}</span>
+          <span>{a.event}</span>
         </span>
-        {!compact && top.expiresAt && (
+        {!compact && a.expiresAt && (
           <span className="shrink-0 text-[10px] font-normal opacity-80">
-            until {fmtTime(top.endsAt ?? top.expiresAt)}
+            until {fmtTime(a.endsAt ?? a.expiresAt)}
           </span>
         )}
       </div>
-      {!compact && top.headline && top.headline !== top.event && (
-        <div className="mt-1 text-xs opacity-90">{top.headline}</div>
-      )}
-      {others.length > 0 && (
-        <button
-          onClick={() => setOpen((s) => !s)}
-          className="mt-1 text-[11px] underline opacity-90"
+      {!compact && a.headline && a.headline !== a.event && (
+        <div
+          className={`mt-1 text-xs opacity-90 ${open ? '' : 'line-clamp-2'}`}
         >
-          {open ? 'Hide' : `+${others.length} more alert${others.length > 1 ? 's' : ''}`}
-        </button>
+          {a.headline}
+        </div>
       )}
-      {open && (
-        <ul className="mt-2 space-y-1 text-[11px] opacity-90">
-          {others.map((a) => (
-            <li key={a.id} className="flex gap-2">
-              <span>{alertEmoji(a.event)}</span>
-              <span>{a.event}</span>
-            </li>
-          ))}
-        </ul>
+      {open && hasDescription && (
+        <div className="mt-2 whitespace-pre-line text-[11px] opacity-90">
+          {a.description}
+        </div>
       )}
-    </div>
+      {hasDescription && !compact && (
+        <div className="mt-1 text-[10px] opacity-70">
+          {open ? 'Tap to collapse' : 'Tap to read'}
+        </div>
+      )}
+    </button>
   );
 }
 
