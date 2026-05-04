@@ -16,7 +16,6 @@ import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
 import AlertsBanner from './AlertsBanner';
 import GolfCard from './GolfCard';
-import HourlyBars from './HourlyBars';
 import PressureTrendLine from './PressureTrendLine';
 
 type Props = {
@@ -185,14 +184,16 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   });
 
   // Compact summary row — visible whether collapsed or expanded.
+  // Mirrors /forecast: feels-like is the headline number, raw temp is
+  // the subline.
   const summary = (
     <div className="mt-2 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
         <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</span>
         <div>
-          <div className="text-2xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
+          <div className="text-2xl font-semibold leading-none">{fmtTemp(displayFeels)}</div>
           <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            Feels {fmtTemp(displayFeels)}
+            Actual {fmtTemp(displayTemp)}
           </div>
         </div>
       </div>
@@ -217,10 +218,12 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
 
       {expanded && (
         <>
-          <div className="mt-3 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-            Right now
+          {/* Right Now sentence (with the "what's coming" sentence folded
+              in, matching /forecast). The summary row above already shows
+              temperature, so no need for a "Right now" header. */}
+          <div className="mt-3 text-sm">
+            {rightNowSentence(data, obs)} {comingUpSentence(data, alerts)}
           </div>
-          <div className="text-sm">{rightNowSentence(data, obs)}</div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-fg-light/40 dark:text-fg-dark/40">
             {obsFresh && obs && (
               <span>
@@ -242,7 +245,19 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             </a>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-2">
+          {/* Same order as /forecast: Golf, then conditions detail, then AQ. */}
+          <div className="mt-3">
+            <GolfCard
+              compact
+              playability={score}
+              windSpeed={displayWind}
+              gusts={displayGusts}
+              airInputs={airInputsForCurrent(data, loc, displayFeels, displayHumidity)}
+              soilMoisture={currentSoilMoisture(data)}
+            />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
               <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
                 Wind
@@ -266,25 +281,6 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             </div>
           </div>
 
-          <div className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-            Coming up
-          </div>
-          <div className="text-sm">{comingUpSentence(data, alerts)}</div>
-
-          <div className="mt-3">
-            <HourlyBars forecast={data} height={28} />
-          </div>
-
-          <div className="mt-4">
-            <GolfCard
-              compact
-              playability={score}
-              windSpeed={displayWind}
-              gusts={displayGusts}
-              airInputs={airInputsForCurrent(data, loc, displayFeels, displayHumidity)}
-              soilMoisture={currentSoilMoisture(data)}
-            />
-          </div>
           {airQuality && (
             <div className="mt-3">
               <AirQualityCard data={airQuality} />
