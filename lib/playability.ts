@@ -131,13 +131,17 @@ export function computeHourlyPlayability(
   hours: number = 24,
 ): { time: string; score: number }[] {
   const h = f.hourly;
+  // Match the rest of the codebase's "find current hour" convention:
+  // bare `new Date(iso)` interprets Open-Meteo's location-local strings
+  // as browser-local, and we compare to Date.now(). For users whose
+  // browser timezone matches the location's, this lands on the right
+  // hour. Forcing UTC here (an earlier attempt) put us 5 hours off and
+  // is the root cause of the BestTeeTime / chart mismatch.
   const nowMs = Date.now();
   const currentHourMs = nowMs - (nowMs % 3600000);
   let start = 0;
   for (let i = 0; i < h.time.length; i++) {
-    const t = h.time[i];
-    const tMs = new Date(/Z|[+-]\d{2}:\d{2}$/.test(t) ? t : t + 'Z').getTime();
-    if (tMs >= currentHourMs) {
+    if (new Date(h.time[i]).getTime() >= currentHourMs) {
       start = i;
       break;
     }

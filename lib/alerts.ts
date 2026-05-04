@@ -40,7 +40,7 @@ export async function fetchAlerts(lat: number, lon: number): Promise<Alert[]> {
     const res = await fetch(url, { headers: NWS_HEADERS });
     if (!res.ok) return [];
     const data = (await res.json()) as NWSResponse;
-    return (data.features ?? [])
+    const all = (data.features ?? [])
       .map((f) => ({
         id: f.id ?? '',
         event: f.properties?.event ?? '',
@@ -51,8 +51,32 @@ export async function fetchAlerts(lat: number, lon: number): Promise<Alert[]> {
         expiresAt: f.properties?.expires ?? null,
         endsAt: f.properties?.ends ?? null,
       }))
-      .filter((a) => a.event)
-      .sort((a, b) => severityRank(b.severity) - severityRank(a.severity));
+      .filter((a) => a.event);
+
+    // Dedupe near-duplicate alerts. NWS commonly returns multiple
+    // issuances of the same advisory during the overlap window when an
+    // earlier one is amended/extended (e.g. a Special Weather Statement
+    // issued at 2 AM and re-issued at 8 AM with the same text but a
+    // later expiration). Group by event + headline + first chunk of
+    // description; keep whichever has the latest expiration.
+    const dedupKey = (a: Alert) =>
+      `${a.event}|${a.headline}|${a.description.slice(0, 200)}`;
+    const byKey = new Map<string, Alert>();
+    for (const a of all) {
+      const k = dedupKey(a);
+      const prev = byKey.get(k);
+      if (!prev) {
+        byKey.set(k, a);
+        continue;
+      }
+      const prevEnd = new Date(prev.endsAt ?? prev.expiresAt ?? 0).getTime();
+      const aEnd = new Date(a.endsAt ?? a.expiresAt ?? 0).getTime();
+      if (aEnd > prevEnd) byKey.set(k, a);
+    }
+
+    return Array.from(byKey.values()).sort(
+      (a, b) => severityRank(b.severity) - severityRank(a.severity),
+    );
   } catch {
     return [];
   }

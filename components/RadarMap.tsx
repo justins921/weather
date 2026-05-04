@@ -156,10 +156,16 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
         zoomControl={false}
         attributionControl={false}
       >
+        {/* Base map: CartoDB Positron. tile.openstreetmap.org occasionally
+            returns a "Zoom Level Not Supported" placeholder when its
+            usage policy heuristics trip — switching to CartoDB's CDN
+            avoids that and is more permissive for app traffic. They
+            request attribution to OSM + CARTO. */}
         <TileLayer
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; OpenStreetMap"
-          maxZoom={19}
+          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
+          subdomains="abcd"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution">CARTO</a>'
+          maxZoom={20}
         />
         {/* Preload all radar frames; only the active one is visible. */}
         {rv &&
