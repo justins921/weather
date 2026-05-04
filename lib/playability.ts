@@ -94,6 +94,20 @@ export function playability(i: PlayabilityInputs): PlayabilityResult {
     score -= 5;
   }
 
+  // Cloud cover for golf is usually a non-issue or even a positive — easier
+  // reads, less heat, less squinting. Only nudge the score when clouds
+  // correlate with conditions that actually hurt:
+  //   - hot day + cloudy → small bonus (welcome shade)
+  //   - cold day + overcast → small penalty (gloomy, hands-cold combo)
+  // Otherwise neutral. NB: this is a deliberate departure from the broad
+  // cloud-cover penalty most weather apps apply.
+  const cloudCover = i.cloud_cover ?? 0;
+  if (i.apparent_temp >= 80 && cloudCover >= 50) {
+    score += 3;
+  } else if (i.apparent_temp < 55 && cloudCover >= 80) {
+    score -= 4;
+  }
+
   score = Math.max(0, Math.round(score));
   return { score, ...labelFor(score) };
 }
@@ -104,6 +118,46 @@ function labelFor(score: number): { label: string; color: string } {
   if (score >= 40) return { label: 'Grinding', color: '#eab308' };
   if (score >= 20) return { label: 'Rough', color: '#f97316' };
   return { label: "Don't bother", color: '#ef4444' };
+}
+
+// Compute one playability score per hour starting at the current local
+// hour, for as many hours as the forecast carries (typically 24 or
+// more). Returns an array of { time, score } samples ready for
+// findBestWindow / findBestTeeTime. Importing components should wrap
+// this in `useMemo` so it isn't recomputed every render.
+import type { Forecast } from './types';
+export function computeHourlyPlayability(
+  f: Forecast,
+  hours: number = 24,
+): { time: string; score: number }[] {
+  const h = f.hourly;
+  const nowMs = Date.now();
+  const currentHourMs = nowMs - (nowMs % 3600000);
+  let start = 0;
+  for (let i = 0; i < h.time.length; i++) {
+    const t = h.time[i];
+    const tMs = new Date(/Z|[+-]\d{2}:\d{2}$/.test(t) ? t : t + 'Z').getTime();
+    if (tMs >= currentHourMs) {
+      start = i;
+      break;
+    }
+  }
+  const out: { time: string; score: number }[] = [];
+  const end = Math.min(h.time.length, start + hours);
+  for (let i = start; i < end; i++) {
+    const result = playability({
+      apparent_temp: h.apparent_temperature[i],
+      wind_speed: h.wind_speed_10m[i],
+      wind_gusts: h.wind_gusts_10m[i],
+      precip_probability: h.precipitation_probability[i] ?? 0,
+      humidity: h.relative_humidity_2m[i],
+      dew_point: h.dew_point_2m[i],
+      cloud_cover: h.cloud_cover[i],
+      is_day: h.is_day?.[i],
+    });
+    out.push({ time: h.time[i], score: result.score });
+  }
+  return out;
 }
 
 /*

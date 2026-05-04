@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import CourseComparison from '@/components/CourseComparison';
 import CurrentLocationButton from '@/components/CurrentLocationButton';
 import LocationCard from '@/components/LocationCard';
 import LocationSearch from '@/components/LocationSearch';
@@ -111,6 +112,12 @@ export default function LocationsPage() {
           </div>
         )}
       </div>
+      {locations.length >= 2 && (
+        <div className="mt-6">
+          <CourseComparison locations={locations} />
+        </div>
+      )}
+
       <div className="mt-8 text-center text-[11px] text-fg-light/40 dark:text-fg-dark/40">
         Updated {updatedAt.toLocaleTimeString()}
       </div>

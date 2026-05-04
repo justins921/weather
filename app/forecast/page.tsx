@@ -8,6 +8,8 @@ import Next24HoursChart from '@/components/Next24HoursChart';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
 import AlertsBanner from '@/components/AlertsBanner';
+import BestTeeTimeCard from '@/components/BestTeeTimeCard';
+import SunsetCheckWidget from '@/components/SunsetCheckWidget';
 import GolfCard from '@/components/GolfCard';
 import MetricCard from '@/components/MetricCard';
 import PressureTrendLine from '@/components/PressureTrendLine';
@@ -188,6 +190,11 @@ export default function ForecastPage() {
 
       {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
+      {/* "Can I tee off now?" — auto-hidden in the morning and when the
+          sunset finish is comfortable. Lives at the top because when it
+          DOES show it's the most actionable thing on the page. */}
+      <SunsetCheckWidget forecast={gfs} />
+
       {/* RIGHT NOW — feels-like is the headline number; raw temp is the
           subline. The "what's coming" sentence is folded in here so the
           old standalone Coming Up section can go away. */}
@@ -222,6 +229,10 @@ export default function ForecastPage() {
           </div>
         </div>
       </section>
+
+      {/* Best Tee Time — the prime slot. Single most-actionable answer
+          on the page: when to tee off today. */}
+      <BestTeeTimeCard forecast={gfs} />
 
       {/* Conditional: only when precip is actually expected in the window. */}
       {expectingPrecip && minutely && (
