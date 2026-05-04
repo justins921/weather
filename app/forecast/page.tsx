@@ -5,6 +5,7 @@ import Link from 'next/link';
 import HourlyBars from '@/components/HourlyBars';
 import ForecastDiscussion from '@/components/ForecastDiscussion';
 import HourlyStrip from '@/components/HourlyStrip';
+import Next24HoursChart from '@/components/Next24HoursChart';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
 import AlertsBanner from '@/components/AlertsBanner';
@@ -12,7 +13,6 @@ import GolfCard from '@/components/GolfCard';
 import MetricCard from '@/components/MetricCard';
 import PressureTrendLine from '@/components/PressureTrendLine';
 import MinutelyChart from '@/components/MinutelyChart';
-import ModelAgreement from '@/components/ModelAgreement';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchBothModels } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
@@ -25,6 +25,7 @@ import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
 import {
   comingUpSentence,
   dewPointLabel,
+  modelAgreementNote,
   rightNowSentence,
   windArrow,
   windCardinal,
@@ -161,10 +162,8 @@ export default function ForecastPage() {
       {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
       <section>
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-          Right now
-        </div>
-        <div className="text-base">{rightNowSentence(gfs, obs)}</div>
+        <div className="font-serif text-2xl font-bold tracking-tight">Right now</div>
+        <div className="mt-1 text-base">{rightNowSentence(gfs, obs)}</div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
           {obsFresh && obs && (
             <span>
@@ -244,10 +243,14 @@ export default function ForecastPage() {
       </section>
 
       <section>
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-          Coming up
+        <div className="font-serif text-2xl font-bold tracking-tight">Coming up</div>
+        <div className="mt-1 text-base">
+          {comingUpSentence(gfs, alerts)}
+          {(() => {
+            const note = modelAgreementNote(gfs, ecmwf);
+            return note ? ` ${note}` : '';
+          })()}
         </div>
-        <div className="text-base">{comingUpSentence(gfs, alerts)}</div>
         <div className="mt-3">
           <HourlyBars forecast={gfs} height={36} />
         </div>
@@ -261,13 +264,18 @@ export default function ForecastPage() {
 
       <HourlyStrip forecast={gfs} />
 
+      <section>
+        <div className="font-serif text-2xl font-bold tracking-tight">Next 24 Hours</div>
+        <div className="mt-3">
+          <Next24HoursChart primary={gfs} alternates={ecmwf ? [ecmwf] : []} />
+        </div>
+      </section>
+
       <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
 
       <InlineRadar lat={loc.lat} lon={loc.lon} />
 
       <WeeklyForecast forecast={gfs} />
-
-      {ecmwf && <ModelAgreement gfs={gfs} ecmwf={ecmwf} />}
     </div>
   );
 }

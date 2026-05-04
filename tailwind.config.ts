@@ -33,6 +33,7 @@ const config: Config = {
           'Arial',
           'sans-serif',
         ],
+        serif: ['ui-serif', 'Georgia', 'Cambria', 'Times New Roman', 'Times', 'serif'],
       },
     },
   },
