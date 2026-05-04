@@ -90,9 +90,10 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
 
   useEffect(() => {
     if (!playing || frames.length === 0) return;
+    // Slightly snappier than the old 600ms now that tiles are preloaded.
     playRef.current = setInterval(() => {
       setFrameIdx((i) => (i + 1) % frames.length);
-    }, 600);
+    }, 500);
     return () => {
       if (playRef.current) clearInterval(playRef.current);
     };
@@ -101,44 +102,43 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
   const currentFrame = frames[frameIdx];
   const isNowcast = (layer === 'radar' || layer === 'both') && frameIdx >= pastCount;
 
-  const radarTile = (frame: RainViewerFrame, opacity: number, key: string) => {
-    if (!rv) return null;
-    const opts = '4/1_1'; // colour scheme 4 + smooth + snow
-    return (
-      <TileLayer
-        key={`r-${frame.path}-${key}`}
-        url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/${opts}.png`}
-        opacity={opacity}
-      />
-    );
-  };
-  const satTile = (frame: RainViewerFrame, opacity: number, key: string) => {
-    if (!rv) return null;
-    const opts = '0/0_0'; // satellite colour scheme + smooth
-    return (
-      <TileLayer
-        key={`s-${frame.path}-${key}`}
-        url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/${opts}.png`}
-        opacity={opacity}
-      />
-    );
-  };
+  // The whole point of this component's render strategy: we mount EVERY
+  // frame's TileLayer at once and toggle visibility via opacity. The
+  // browser caches tiles after the first pass through the loop, so
+  // subsequent cycles play smoothly. Mounting/unmounting per frame change
+  // (the previous approach) re-fetched tiles every step, which on cellular
+  // looked like a stutter at every frame boundary.
+  const allRadarFrames = useMemo<RainViewerFrame[]>(
+    () => (rv ? [...rv.radar.past, ...rv.radar.nowcast] : []),
+    [rv],
+  );
+  const allSatFrames = useMemo<RainViewerFrame[]>(
+    () => (rv ? rv.satellite.infrared : []),
+    [rv],
+  );
 
-  // Pick the satellite frame closest in time to the current radar frame so
-  // the two layers stay roughly in sync when playing in 'both' mode.
-  const matchingSatFrame = useMemo(() => {
-    if (!rv || !currentFrame || layer !== 'both') return null;
-    let best = rv.satellite.infrared[0];
+  // Which frame index is "active" depends on the current layer. The scrubber
+  // drives radar in radar/both modes and satellite in sat mode.
+  const activeRadarIdx = layer === 'sat' ? -1 : frameIdx;
+
+  // In 'both' mode, find the satellite frame closest in time to the active
+  // radar frame so the two layers stay roughly in sync as we scrub.
+  const activeSatIdx = useMemo(() => {
+    if (layer === 'sat') return frameIdx;
+    if (layer !== 'both') return -1;
+    const radarFrame = allRadarFrames[frameIdx];
+    if (!radarFrame || allSatFrames.length === 0) return -1;
+    let best = 0;
     let bestDelta = Infinity;
-    for (const f of rv.satellite.infrared) {
-      const d = Math.abs(f.time - currentFrame.time);
+    for (let i = 0; i < allSatFrames.length; i++) {
+      const d = Math.abs(allSatFrames[i].time - radarFrame.time);
       if (d < bestDelta) {
         bestDelta = d;
-        best = f;
+        best = i;
       }
     }
-    return best ?? null;
-  }, [rv, currentFrame, layer]);
+    return best;
+  }, [layer, frameIdx, allRadarFrames, allSatFrames]);
 
   return (
     <div className="relative h-full w-full overflow-hidden rounded-2xl" style={{ height }}>
@@ -153,14 +153,30 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap"
         />
-        {currentFrame && layer === 'sat' && satTile(currentFrame, 0.85, 'sat')}
-        {currentFrame && layer === 'radar' && radarTile(currentFrame, 0.7, 'radar')}
-        {currentFrame && layer === 'both' && (
-          <>
-            {matchingSatFrame && satTile(matchingSatFrame, 0.4, 'satbase')}
-            {radarTile(currentFrame, 0.85, 'radarover')}
-          </>
-        )}
+        {/* Preload all radar frames; only the active one is visible. */}
+        {rv &&
+          allRadarFrames.map((frame, idx) => (
+            <TileLayer
+              key={`r-${frame.path}`}
+              url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/4/1_1.png`}
+              opacity={
+                idx === activeRadarIdx ? (layer === 'both' ? 0.85 : 0.7) : 0
+              }
+              zIndex={idx === activeRadarIdx ? 410 : 400}
+            />
+          ))}
+        {/* Preload all satellite frames; only the active one is visible. */}
+        {rv &&
+          allSatFrames.map((frame, idx) => (
+            <TileLayer
+              key={`s-${frame.path}`}
+              url={`${rv.host}${frame.path}/256/{z}/{x}/{y}/0/0_0.png`}
+              opacity={
+                idx === activeSatIdx ? (layer === 'both' ? 0.4 : 0.85) : 0
+              }
+              zIndex={idx === activeSatIdx ? (layer === 'both' ? 405 : 410) : 400}
+            />
+          ))}
         <Marker position={[lat, lon]} icon={pinIcon} />
         <Recenter lat={lat} lon={lon} trigger={centerTick} />
       </MapContainer>
