@@ -2,7 +2,10 @@ import type { Config } from 'tailwindcss';
 
 const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}', './lib/**/*.{ts,tsx}'],
-  darkMode: 'media',
+  // Class-based so the user can override OS preference from Settings.
+  // The .dark class is set on <html> by the inline script in
+  // app/layout.tsx before first paint and toggled by lib/theme.ts.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { getSelectedLocation, loadLocations, setSelectedId } from '@/lib/locations';
+import { loadTheme, saveTheme, type Theme } from '@/lib/theme';
 import type { Location } from '@/lib/types';
 
 type HealthStatus = {
@@ -119,12 +120,13 @@ const SOURCES: Source[] = [
 ];
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
+  const [theme, setTheme] = useState<Theme>('auto');
   const [locations, setLocations] = useState<Location[]>([]);
   const [defaultId, setDefaultId] = useState<string | null>(null);
   const [health, setHealth] = useState<HealthStatus | null>(null);
 
   useEffect(() => {
+    setTheme(loadTheme());
     setLocations(loadLocations());
     setDefaultId(getSelectedLocation()?.id ?? null);
     fetch('/api/health')
@@ -142,7 +144,11 @@ export default function SettingsPage() {
       <Row label="Theme">
         <select
           value={theme}
-          onChange={(e) => setTheme(e.target.value as typeof theme)}
+          onChange={(e) => {
+            const t = e.target.value as Theme;
+            setTheme(t);
+            saveTheme(t);
+          }}
           className="rounded-lg bg-black/5 px-2 py-1 text-sm dark:bg-white/10"
         >
           <option value="auto">Auto</option>
