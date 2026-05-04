@@ -1,27 +1,33 @@
 'use client';
 
 import { useState } from 'react';
+import type { EnsemblePoint } from '@/lib/ensemble';
 import type { Forecast } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
 
 type Props = {
   primary: Forecast;
-  alternates?: Forecast[];
+  // Per-hour ensemble percentiles. When provided, the chart draws the
+  // p10–p90 confidence band as a shaded area and uses the median for the
+  // line + data point positions. The `primary` forecast still drives the
+  // weather-code/emoji + cloud-cover lookups since the ensemble doesn't
+  // carry those fields.
+  ensemble?: EnsemblePoint[];
 };
 
 const HOURS = 24;
 
-// Hand-rolled SVG. One responsive chart with the primary forecast as a bold
-// white line and any number of alternate models drawn as ghosted curves
-// behind it. Header row groups precip % into Evening / Overnight / Morning /
-// Afternoon equal-width buckets. A "Now" indicator marks current time. A
-// toggle pill at the bottom hides/shows the alternates.
-export default function Next24HoursChart({ primary, alternates = [] }: Props) {
-  const [showAlts, setShowAlts] = useState(true);
+// Hand-rolled SVG. Renders a confidence band derived from ICON ensemble
+// members (p10–p90 fill) with the median temperature line on top. Bucket
+// row above the chart shows precip % per Evening / Overnight / Morning /
+// Afternoon. A dotted "Now" indicator marks current time. Toggle pill
+// below the chart hides/shows the band.
+export default function Next24HoursChart({ primary, ensemble = [] }: Props) {
+  const [showBand, setShowBand] = useState(true);
 
   // Snap chart start to the current local hour. Indices match in primary
-  // and each alternate because Open-Meteo returns hourly data on aligned
-  // timestamps for the same coordinate.
+  // because Open-Meteo returns hourly data on aligned timestamps for the
+  // same coordinate.
   const nowMs = Date.now();
   const currentHourMs = nowMs - (nowMs % 3600000);
 
@@ -38,15 +44,24 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
   const primaryIsDay = idx.map((i) => primary.hourly.is_day?.[i] ?? 1);
   const precipProbs = idx.map((i) => primary.hourly.precipitation_probability[i] ?? 0);
 
-  const altSeries = alternates.map((alt) => {
-    const altStart = findHourIndex(alt, currentHourMs);
-    return Array.from({ length: HOURS + 1 }, (_, k) => alt.hourly.temperature_2m[altStart + k]);
-  });
+  // Map ensemble points by their time stamp so we can align to the chart's
+  // hour grid regardless of where the ensemble's own array starts.
+  const ensembleByTime = new Map(ensemble.map((p) => [p.time, p]));
+  const ensemblePts = times.map((t) => ensembleByTime.get(t) ?? null);
+  const hasEnsemble = ensemble.length > 0 && ensemblePts.some((p) => p !== null);
 
-  // Y-range — leave headroom above for the temp/emoji labels.
-  const allTemps = [...primaryTemps, ...altSeries.flat()].filter(
-    (t): t is number => typeof t === 'number' && Number.isFinite(t),
+  // Median temps drive the line; fall back to the primary forecast when an
+  // ensemble point is missing for that hour (early-morning data gaps, etc).
+  const medianTemps = ensemblePts.map((p, k) =>
+    p ? p.median : primaryTemps[k],
   );
+
+  // Y-range — leave headroom above for the temp/emoji labels. Include band
+  // extents so the band always fits in the viewBox.
+  const allTemps = [
+    ...medianTemps,
+    ...ensemblePts.flatMap((p) => (p ? [p.p10, p.p90] : [])),
+  ].filter((t): t is number => typeof t === 'number' && Number.isFinite(t));
   const tMin = Math.min(...allTemps) - 2;
   const tMax = Math.max(...allTemps) + 12;
 
@@ -62,7 +77,8 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
   const xFor = (k: number) => PAD_X + (k / HOURS) * chartW;
   const yFor = (t: number) => PAD_TOP + ((tMax - t) / (tMax - tMin || 1)) * chartH;
 
-  const primaryPath = pathFor(primaryTemps, xFor, yFor);
+  const medianPath = pathFor(medianTemps, xFor, yFor);
+  const bandPath = hasEnsemble ? bandPathFor(ensemblePts, xFor, yFor) : '';
 
   // Now line: position by sub-hour fraction.
   const nowKf = (nowMs - currentHourMs) / 3600000;
@@ -129,25 +145,19 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
           )}
 
           <g mask="url(#n24-mask)">
-            {/* Alternate models, ghosted */}
-            {showAlts &&
-              altSeries.map((temps, i) => (
-                <path
-                  key={i}
-                  d={pathFor(temps, xFor, yFor)}
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-fg-light dark:text-fg-dark"
-                  strokeWidth={1.5}
-                  strokeOpacity={0.3}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              ))}
+            {/* Confidence band (p10–p90) */}
+            {showBand && hasEnsemble && bandPath && (
+              <path
+                d={bandPath}
+                className="fill-fg-light dark:fill-fg-dark"
+                fillOpacity={0.15}
+                stroke="none"
+              />
+            )}
 
-            {/* Primary line shadow + line */}
+            {/* Median line shadow + line */}
             <path
-              d={primaryPath}
+              d={medianPath}
               fill="none"
               stroke="currentColor"
               className="text-fg-light dark:text-fg-dark"
@@ -158,7 +168,7 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
               filter="url(#n24-shadow)"
             />
             <path
-              d={primaryPath}
+              d={medianPath}
               fill="none"
               stroke="currentColor"
               className="text-fg-light dark:text-fg-dark"
@@ -168,8 +178,10 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
             />
           </g>
 
-          {/* Data points + labels (every 3rd hour gets temp + emoji) */}
-          {primaryTemps.map((t, k) => {
+          {/* Data points + labels (every 3rd hour gets temp + emoji). The
+              dot sits on the median line so the eye lands on the same
+              point as the labelled value. */}
+          {medianTemps.map((t, k) => {
             const cx = xFor(k);
             const cy = yFor(t);
             const labelled = k % 3 === 0 && k < HOURS;
@@ -193,12 +205,7 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
                     >
                       {Math.round(t)}°
                     </text>
-                    <text
-                      x={cx}
-                      y={cy - 22}
-                      fontSize="14"
-                      textAnchor="middle"
-                    >
+                    <text x={cx} y={cy - 22} fontSize="14" textAnchor="middle">
                       {weatherEmoji(primaryCodes[k], primaryClouds[k], primaryIsDay[k])}
                     </text>
                   </>
@@ -223,7 +230,11 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
         </svg>
       </div>
 
-      <TogglePill showAlts={showAlts} onToggle={() => setShowAlts((s) => !s)} hasAlts={alternates.length > 0} />
+      <TogglePill
+        showBand={showBand}
+        onToggle={() => setShowBand((s) => !s)}
+        hasBand={hasEnsemble}
+      />
     </section>
   );
 }
@@ -233,6 +244,31 @@ function findHourIndex(f: Forecast, currentHourMs: number): number {
     if (new Date(f.hourly.time[i]).getTime() >= currentHourMs) return i;
   }
   return 0;
+}
+
+// Closed polygon spanning p90 across the top and p10 back along the bottom.
+// Skips any gaps where the ensemble has no data for that hour.
+function bandPathFor(
+  pts: (EnsemblePoint | null)[],
+  xFor: (k: number) => number,
+  yFor: (t: number) => number,
+): string {
+  const valid = pts
+    .map((p, k) => (p ? { k, p } : null))
+    .filter((x): x is { k: number; p: EnsemblePoint } => x !== null);
+  if (valid.length < 2) return '';
+  let path = '';
+  // Top edge (p90), left to right.
+  valid.forEach((v, i) => {
+    path += `${i === 0 ? 'M' : 'L'} ${xFor(v.k).toFixed(1)} ${yFor(v.p.p90).toFixed(1)} `;
+  });
+  // Bottom edge (p10), right to left.
+  for (let i = valid.length - 1; i >= 0; i--) {
+    const v = valid[i];
+    path += `L ${xFor(v.k).toFixed(1)} ${yFor(v.p.p10).toFixed(1)} `;
+  }
+  path += 'Z';
+  return path;
 }
 
 function pathFor(temps: number[], xFor: (k: number) => number, yFor: (t: number) => number): string {
@@ -306,28 +342,28 @@ function BucketHeader({ buckets }: { buckets: Bucket[] }) {
 }
 
 function TogglePill({
-  showAlts,
+  showBand,
   onToggle,
-  hasAlts,
+  hasBand,
 }: {
-  showAlts: boolean;
+  showBand: boolean;
   onToggle: () => void;
-  hasAlts: boolean;
+  hasBand: boolean;
 }) {
-  if (!hasAlts) return null;
+  if (!hasBand) return null;
   return (
     <div className="mt-2 flex justify-center">
       <button
         onClick={onToggle}
         className="flex items-center gap-2 rounded-full bg-card-light px-4 py-2 text-xs dark:bg-card-dark"
-        aria-pressed={showAlts}
+        aria-pressed={showBand}
       >
-        <span className={`flex items-center gap-1.5 ${showAlts ? '' : 'font-semibold'}`}>
-          <Dot active={!showAlts} /> Forecast
+        <span className={`flex items-center gap-1.5 ${showBand ? '' : 'font-semibold'}`}>
+          <Dot active={!showBand} /> Forecast
         </span>
         <span className="h-3 w-px bg-fg-light/20 dark:bg-fg-dark/20" />
-        <span className={`flex items-center gap-1.5 ${showAlts ? 'font-semibold' : 'opacity-60'}`}>
-          <Dot active={showAlts} /> Alternate Predictions
+        <span className={`flex items-center gap-1.5 ${showBand ? 'font-semibold' : 'opacity-60'}`}>
+          <Dot active={showBand} /> Show Confidence Band
         </span>
       </button>
     </div>

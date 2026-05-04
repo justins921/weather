@@ -1,18 +1,21 @@
 'use client';
 
+import type { PollenForecast } from '@/lib/airQuality';
 import { fmtHourLocal } from '@/lib/format';
 import { playability } from '@/lib/playability';
 import type { Forecast } from '@/lib/types';
 import { wearAdvice } from '@/lib/wear';
+import { pollenSummary } from './PollenCard';
 
 type Props = {
   forecast: Forecast;
+  pollen?: PollenForecast | null;
 };
 
 // Find the most likely tee-time hour within the next 6 by playability score,
 // then render wear advice for that hour. If you check at 9pm, this still
 // surfaces tomorrow morning's recommendation.
-export default function WearAdvicePanel({ forecast }: Props) {
+export default function WearAdvicePanel({ forecast, pollen }: Props) {
   const h = forecast.hourly;
   const nowMs = Date.now();
   let start = 0;
@@ -52,6 +55,7 @@ export default function WearAdvicePanel({ forecast }: Props) {
     precip_probability: h.precipitation_probability[bestIdx] ?? 0,
     uv_index: h.uv_index[bestIdx] ?? 0,
     dew_point: h.dew_point_2m[bestIdx],
+    highPollen: pollenSummary(pollen ?? null).highOrAbove,
   });
 
   return (

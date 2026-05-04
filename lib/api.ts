@@ -93,16 +93,6 @@ export async function fetchMinutely(lat: number, lon: number): Promise<Forecast>
   return (await res.json()) as Forecast;
 }
 
-export async function fetchBothModels(
-  lat: number,
-  lon: number,
-): Promise<{ gfs: Forecast; ecmwf: Forecast }> {
-  const [gfs, ecmwf] = await Promise.all([
-    fetchForecast(lat, lon, 'gfs_seamless'),
-    fetchForecast(lat, lon, 'ecmwf_ifs025'),
-  ]);
-  return { gfs, ecmwf };
-}
 
 export async function geocode(query: string): Promise<GeocodeResult[]> {
   if (!query.trim()) return [];

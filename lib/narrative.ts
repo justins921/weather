@@ -53,23 +53,6 @@ export function comingUpSentence(f: Forecast, alerts: Alert[] = []): string {
   return base;
 }
 
-// Average absolute temperature delta over the next 24h between two model
-// runs. Used as a "forecast confidence" signal — appended to the Coming Up
-// sentence when models disagree meaningfully.
-export function modelAgreementNote(gfs: Forecast, ecmwf?: Forecast | null): string | null {
-  if (!ecmwf) return null;
-  const n = Math.min(24, gfs.hourly.time.length, ecmwf.hourly.time.length);
-  if (n === 0) return null;
-  let total = 0;
-  for (let i = 0; i < n; i++) {
-    total += Math.abs(gfs.hourly.temperature_2m[i] - ecmwf.hourly.temperature_2m[i]);
-  }
-  const avg = total / n;
-  if (avg > 6) return 'Forecast confidence is lower than usual — check back tomorrow.';
-  if (avg > 3) return 'Models slightly disagree on afternoon temps.';
-  return null;
-}
-
 function comingUpFromForecast(f: Forecast): string {
   const tz = f.timezone;
   const h = f.hourly;

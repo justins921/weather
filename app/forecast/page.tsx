@@ -14,10 +14,12 @@ import MetricCard from '@/components/MetricCard';
 import PressureTrendLine from '@/components/PressureTrendLine';
 import MinutelyChart from '@/components/MinutelyChart';
 import WeeklyForecast from '@/components/WeeklyForecast';
-import { fetchBothModels } from '@/lib/api';
+import { fetchForecast } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
 import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
 import AirQualityCard from '@/components/AirQualityCard';
+import PollenCard from '@/components/PollenCard';
+import { confidenceLabel, fetchEnsemble, type EnsemblePoint } from '@/lib/ensemble';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
@@ -25,7 +27,6 @@ import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
 import {
   comingUpSentence,
   dewPointLabel,
-  modelAgreementNote,
   rightNowSentence,
   windArrow,
   windCardinal,
@@ -37,7 +38,7 @@ import { weatherEmoji } from '@/lib/weatherCodes';
 export default function ForecastPage() {
   const [loc, setLoc] = useState<Location | null>(null);
   const [gfs, setGfs] = useState<Forecast | null>(null);
-  const [ecmwf, setEcmwf] = useState<Forecast | null>(null);
+  const [ensemble, setEnsemble] = useState<EnsemblePoint[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
@@ -47,16 +48,27 @@ export default function ForecastPage() {
     setLoc(sel);
     if (!sel) return;
     let cancelled = false;
-    cachedFetch(`fcboth:${sel.lat},${sel.lon}`, 10 * 60 * 1000, () =>
-      fetchBothModels(sel.lat, sel.lon),
+    // Single-model deterministic forecast for everything except the chart's
+    // confidence band (playability, wear, club wind, hourly strip, etc.).
+    cachedFetch(`fc:${sel.lat},${sel.lon}`, 10 * 60 * 1000, () =>
+      fetchForecast(sel.lat, sel.lon, 'gfs_seamless'),
     )
-      .then(({ gfs: g, ecmwf: e }) => {
+      .then((g) => {
         if (cancelled) return;
         setGfs(g);
-        setEcmwf(e);
         if (sel.elevation_ft === undefined && typeof g.elevation === 'number') {
           setLocationElevation(sel.id, g.elevation);
         }
+      })
+      .catch(() => {});
+    // Ensemble — only used to draw the p10–p90 confidence band on the
+    // 24-hour chart and to derive a confidence note for the Coming Up
+    // summary sentence.
+    cachedFetch(`ens:${sel.lat},${sel.lon}`, 30 * 60 * 1000, () =>
+      fetchEnsemble(sel.lat, sel.lon),
+    )
+      .then((e) => {
+        if (!cancelled) setEnsemble(e);
       })
       .catch(() => {});
     cachedFetch(`alerts:${sel.lat},${sel.lon}`, 5 * 60 * 1000, () =>
@@ -232,6 +244,9 @@ export default function ForecastPage() {
         <div className="mt-2">
           <AirQualityCard data={airQuality} />
         </div>
+        <div className="mt-2">
+          <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
+        </div>
         {todayUv > 5 && (
           <div className="mt-2">
             <MetricCard
@@ -248,8 +263,8 @@ export default function ForecastPage() {
         <div className="mt-1 text-base">
           {comingUpSentence(gfs, alerts)}
           {(() => {
-            const note = modelAgreementNote(gfs, ecmwf);
-            return note ? ` ${note}` : '';
+            const c = confidenceLabel(ensemble);
+            return c.message ? ` ${c.message}` : '';
           })()}
         </div>
         <div className="mt-3">
@@ -257,7 +272,7 @@ export default function ForecastPage() {
         </div>
       </section>
 
-      <WearAdvicePanel forecast={gfs} />
+      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
 
       {gfs.minutely_15 && (
         <MinutelyChart minutely={gfs.minutely_15} timezone={gfs.timezone} />
@@ -268,7 +283,7 @@ export default function ForecastPage() {
       <section>
         <div className="font-serif text-2xl font-bold tracking-tight">Next 24 Hours</div>
         <div className="mt-3">
-          <Next24HoursChart primary={gfs} alternates={ecmwf ? [ecmwf] : []} />
+          <Next24HoursChart primary={gfs} ensemble={ensemble} />
         </div>
       </section>
 

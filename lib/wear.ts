@@ -1,6 +1,6 @@
 // Wear advice: rule tree based on a single hour's snapshot.
 // Pick a base outfit by apparent temp, then layer modifiers
-// (wind, rain, glove logic, sun, humidity) into the detail.
+// (wind, rain, glove logic, sun, humidity, pollen) into the detail.
 
 export type WearInputs = {
   apparent_temp: number;
@@ -9,6 +9,10 @@ export type WearInputs = {
   precip_probability: number;
   uv_index: number;
   dew_point: number;
+  // True when any pollen species is High or Very High in the current hour
+  // or within the 24-hour peak window. Caller should derive from
+  // pollenSummary() in components/PollenCard.tsx.
+  highPollen?: boolean;
 };
 
 export type WearAdvice = {
@@ -93,6 +97,11 @@ export function wearAdvice(i: WearInputs): WearAdvice {
   // HUMIDITY
   if (i.dew_point >= 70) {
     extras.push("Towel to your bag — it's muggy.");
+  }
+
+  // POLLEN
+  if (i.highPollen) {
+    extras.push('Antihistamine before your round if you have allergies.');
   }
 
   const detail = [base, ...extras].join(' ');
