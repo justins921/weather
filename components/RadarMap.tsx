@@ -145,6 +145,13 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
       <MapContainer
         center={[lat, lon]}
         zoom={zoom}
+        // RainViewer tiles only exist roughly in the 0–10 range; clamp
+        // the map's zoom range so Leaflet never sits at a level where
+        // tiles can't be served. Going past 10 would pixel-stretch the
+        // last native tile (handled below via maxNativeZoom on the
+        // overlay TileLayers).
+        minZoom={3}
+        maxZoom={12}
         className="h-full w-full"
         zoomControl={false}
         attributionControl={false}
@@ -152,6 +159,7 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
         <TileLayer
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           attribution="&copy; OpenStreetMap"
+          maxZoom={19}
         />
         {/* Preload all radar frames; only the active one is visible. */}
         {rv &&
@@ -163,6 +171,11 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
                 idx === activeRadarIdx ? (layer === 'both' ? 0.85 : 0.7) : 0
               }
               zIndex={idx === activeRadarIdx ? 410 : 400}
+              // RainViewer's max native tile zoom is ~10. Past that, we
+              // tell Leaflet to scale up the z=10 tile rather than
+              // requesting non-existent z=11/12 tiles (which would 404).
+              maxNativeZoom={10}
+              maxZoom={12}
             />
           ))}
         {/* Preload all satellite frames; only the active one is visible. */}
@@ -175,6 +188,8 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
                 idx === activeSatIdx ? (layer === 'both' ? 0.4 : 0.85) : 0
               }
               zIndex={idx === activeSatIdx ? (layer === 'both' ? 405 : 410) : 400}
+              maxNativeZoom={10}
+              maxZoom={12}
             />
           ))}
         <Marker position={[lat, lon]} icon={pinIcon} />
