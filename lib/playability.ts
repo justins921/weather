@@ -33,6 +33,9 @@ export type PlayabilityInputs = {
   humidity: number;
   dew_point: number;
   cloud_cover: number;
+  // 1 if the sun is up at this point in time, 0 if not. Defaults to 1
+  // (assume daylight) so callers that don't pass it keep working.
+  is_day?: number;
 };
 
 export type PlayabilityResult = {
@@ -42,6 +45,12 @@ export type PlayabilityResult = {
 };
 
 export function playability(i: PlayabilityInputs): PlayabilityResult {
+  // You can't play in the dark. Hard-zero the score and surface a label
+  // that doesn't pretend the weather is the problem.
+  if (i.is_day === 0) {
+    return { score: 0, label: 'After dark', color: '#475569' };
+  }
+
   let score = 100;
 
   // Temperature: penalize against an ideal feels-like window of 67-79°F,

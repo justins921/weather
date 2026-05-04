@@ -35,6 +35,7 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
   const primaryTemps = idx.map((i) => primary.hourly.temperature_2m[i]);
   const primaryCodes = idx.map((i) => primary.hourly.weather_code[i]);
   const primaryClouds = idx.map((i) => primary.hourly.cloud_cover[i]);
+  const primaryIsDay = idx.map((i) => primary.hourly.is_day?.[i] ?? 1);
   const precipProbs = idx.map((i) => primary.hourly.precipitation_probability[i] ?? 0);
 
   const altSeries = alternates.map((alt) => {
@@ -198,7 +199,7 @@ export default function Next24HoursChart({ primary, alternates = [] }: Props) {
                       fontSize="14"
                       textAnchor="middle"
                     >
-                      {weatherEmoji(primaryCodes[k], primaryClouds[k])}
+                      {weatherEmoji(primaryCodes[k], primaryClouds[k], primaryIsDay[k])}
                     </text>
                   </>
                 )}

@@ -132,6 +132,7 @@ export default function ForecastPage() {
     humidity: displayHumidity,
     dew_point: displayDew,
     cloud_cover: c.cloud_cover,
+    is_day: c.is_day,
   });
 
   const todayUv = gfs.daily.uv_index_max[0];
@@ -181,7 +182,7 @@ export default function ForecastPage() {
           </a>
         </div>
         <div className="mt-3 flex items-center gap-4">
-          <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</div>
+          <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</div>
           <div>
             <div className="text-7xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
             <div className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">

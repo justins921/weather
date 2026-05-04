@@ -1,9 +1,18 @@
 // WMO weather code -> emoji + short label
 
-export function weatherEmoji(code: number, cloudCover = 0): string {
-  if (code === 0) return '☀️';
-  if (code === 1) return cloudCover > 25 ? '🌤️' : '☀️';
-  if (code === 2) return '⛅';
+export function weatherEmoji(code: number, cloudCover = 0, isDay: boolean | number = true): string {
+  const day = !!isDay;
+  if (code === 0) return day ? '☀️' : '🌙';
+  if (code === 1) {
+    // Mostly clear
+    if (day) return cloudCover > 25 ? '🌤️' : '☀️';
+    return '🌙';
+  }
+  if (code === 2) {
+    // Partly cloudy — no widely-rendered moon-with-cloud emoji, fall back
+    // to plain cloud at night.
+    return day ? '⛅' : '☁️';
+  }
   if (code === 3) return '☁️';
   if (code === 45 || code === 48) return '🌫️';
   if (code >= 51 && code <= 57) return '🌦️';

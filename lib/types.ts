@@ -19,6 +19,7 @@ export type CurrentBlock = {
   wind_gusts_10m: number;
   dew_point_2m: number;
   cloud_cover: number;
+  is_day?: number;
 };
 
 export type HourlyBlock = {
@@ -37,6 +38,7 @@ export type HourlyBlock = {
   uv_index: number[];
   surface_pressure: number[];
   soil_moisture_0_to_10cm?: number[];
+  is_day?: number[];
 };
 
 export type DailyBlock = {

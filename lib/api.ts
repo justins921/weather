@@ -16,6 +16,7 @@ const CURRENT_VARS = [
   'wind_gusts_10m',
   'dew_point_2m',
   'cloud_cover',
+  'is_day',
 ].join(',');
 
 const MINUTELY_VARS = ['precipitation', 'precipitation_probability'].join(',');
@@ -35,6 +36,7 @@ const HOURLY_VARS = [
   'uv_index',
   'surface_pressure',
   'soil_moisture_0_to_10cm',
+  'is_day',
 ].join(',');
 
 const DAILY_VARS = [

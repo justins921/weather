@@ -181,13 +181,14 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
     humidity: displayHumidity,
     dew_point: displayDew,
     cloud_cover: c.cloud_cover,
+    is_day: c.is_day,
   });
 
   // Compact summary row — visible whether collapsed or expanded.
   const summary = (
     <div className="mt-2 flex items-center justify-between gap-3">
       <div className="flex items-center gap-3">
-        <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover)}</span>
+        <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</span>
         <div>
           <div className="text-2xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
           <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">

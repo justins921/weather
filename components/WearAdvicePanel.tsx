@@ -37,6 +37,7 @@ export default function WearAdvicePanel({ forecast }: Props) {
       humidity: h.relative_humidity_2m[i],
       dew_point: h.dew_point_2m[i],
       cloud_cover: h.cloud_cover[i],
+      is_day: h.is_day?.[i],
     }).score;
     if (s > bestScore) {
       bestScore = s;

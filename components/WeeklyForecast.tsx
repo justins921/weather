@@ -91,6 +91,7 @@ function DayDetail({ forecast, dayIndex }: { forecast: Forecast; dayIndex: numbe
       humidity: h.relative_humidity_2m[i],
       dew_point: h.dew_point_2m[i],
       cloud_cover: h.cloud_cover[i],
+      is_day: h.is_day?.[i],
     }),
   );
   const avg = Math.round(scores.reduce((a, b) => a + b.score, 0) / scores.length);
@@ -145,7 +146,7 @@ function DayDetail({ forecast, dayIndex }: { forecast: Forecast; dayIndex: numbe
             style={{ background: `${scores[k].color}22` }}
           >
             <div className="text-[10px]">{fmtHourLocal(h.time[i], forecast.timezone)}</div>
-            <div>{weatherEmoji(h.weather_code[i], h.cloud_cover[i])}</div>
+            <div>{weatherEmoji(h.weather_code[i], h.cloud_cover[i], h.is_day?.[i] ?? 1)}</div>
             <div className="text-[11px] font-semibold text-fg-light dark:text-fg-dark">
               {fmtTemp(h.temperature_2m[i])}
             </div>

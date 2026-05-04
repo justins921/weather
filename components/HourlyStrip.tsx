@@ -37,6 +37,7 @@ export default function HourlyStrip({ forecast }: Props) {
             windDir={h.wind_direction_10m[i]}
             gusts={h.wind_gusts_10m[i]}
             cloudCover={h.cloud_cover[i]}
+            isDay={h.is_day?.[i]}
             humidity={h.relative_humidity_2m[i]}
             dewPoint={h.dew_point_2m[i]}
           />

@@ -16,6 +16,7 @@ type Props = {
   cloudCover: number;
   humidity: number;
   dewPoint: number;
+  isDay?: number;
 };
 
 export default function HourCell(p: Props) {
@@ -27,6 +28,7 @@ export default function HourCell(p: Props) {
     humidity: p.humidity,
     dew_point: p.dewPoint,
     cloud_cover: p.cloudCover,
+    is_day: p.isDay,
   });
   // Subtle score-based tint behind cell.
   const tint = `${score.color}22`;
@@ -38,7 +40,7 @@ export default function HourCell(p: Props) {
       <div className="text-[11px] font-medium text-fg-light/70 dark:text-fg-dark/70">
         {fmtHourLocal(p.iso, p.timezone)}
       </div>
-      <div className="text-xl leading-none">{weatherEmoji(p.weatherCode, p.cloudCover)}</div>
+      <div className="text-xl leading-none">{weatherEmoji(p.weatherCode, p.cloudCover, p.isDay ?? 1)}</div>
       <div className="text-base font-semibold">{fmtTemp(p.temp)}</div>
       <div className="text-[10px] leading-tight text-fg-light/60 dark:text-fg-dark/60">
         <span>{windArrow(p.windDir)}</span> {fmtMph(p.windSpeed)}

@@ -39,6 +39,7 @@ export default function HourlyBars({ forecast, height = 32 }: Props) {
       humidity: h.relative_humidity_2m[i],
       dew_point: h.dew_point_2m[i],
       cloud_cover: h.cloud_cover[i],
+      is_day: h.is_day?.[i],
     }),
   );
   // Shared scale for feels and temp so the two rows are visually comparable.
