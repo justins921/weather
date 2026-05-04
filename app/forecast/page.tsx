@@ -217,34 +217,9 @@ export default function ForecastPage() {
           <div>
             <div className="text-7xl font-semibold leading-none">{fmtTemp(displayFeels)}</div>
             <div className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">
-              Air temp {fmtTemp(displayTemp)}
+              Actual {fmtTemp(displayTemp)}
             </div>
           </div>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          <MetricCard
-            label="Wind"
-            value={
-              <span>
-                {fmtMph(displayWind)} {windArrow(displayWindDir)}
-              </span>
-            }
-            sub={`From the ${windCardinal(displayWindDir)}. Gusts to ${Math.round(displayGusts)}mph.`}
-            footer={<PressureTrendLine forecast={gfs} />}
-          />
-          {dewExtreme ? (
-            <MetricCard
-              label="Dew Point"
-              value={`${fmtTemp(displayDew)} 💧`}
-              sub={dewPointLabel(displayDew)}
-            />
-          ) : (
-            <MetricCard
-              label="Humidity"
-              value={`${Math.round(displayHumidity)}%`}
-              sub={`Dew ${fmtTemp(displayDew)} · ${dewPointLabel(displayDew)}`}
-            />
-          )}
         </div>
       </section>
 
@@ -267,7 +242,35 @@ export default function ForecastPage() {
         soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
       />
 
-      {/* AQ + UV. Half-width when both exist, otherwise full. */}
+      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
+
+      {/* Conditions detail: Wind + Humidity/Dew on the first row,
+          Air Quality + UV on the second when both exist. */}
+      <div className="grid grid-cols-2 gap-2">
+        <MetricCard
+          label="Wind"
+          value={
+            <span>
+              {fmtMph(displayWind)} {windArrow(displayWindDir)}
+            </span>
+          }
+          sub={`From the ${windCardinal(displayWindDir)}. Gusts to ${Math.round(displayGusts)}mph.`}
+          footer={<PressureTrendLine forecast={gfs} />}
+        />
+        {dewExtreme ? (
+          <MetricCard
+            label="Dew Point"
+            value={`${fmtTemp(displayDew)} 💧`}
+            sub={dewPointLabel(displayDew)}
+          />
+        ) : (
+          <MetricCard
+            label="Humidity"
+            value={`${Math.round(displayHumidity)}%`}
+            sub={`Dew ${fmtTemp(displayDew)} · ${dewPointLabel(displayDew)}`}
+          />
+        )}
+      </div>
       {(showAq || showUv) && (
         <div className={showAq && showUv ? 'grid grid-cols-2 gap-2' : ''}>
           {showAq && <AirQualityCard data={airQuality} />}
@@ -282,8 +285,6 @@ export default function ForecastPage() {
       )}
 
       <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
-
-      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
 
       <section>
         <div className="font-serif text-2xl font-bold tracking-tight">Next 24 Hours</div>

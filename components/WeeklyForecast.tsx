@@ -57,20 +57,15 @@ export default function WeeklyForecast({ forecast }: Props) {
 function DayDetail({ forecast, dayIndex }: { forecast: Forecast; dayIndex: number }) {
   const d = forecast.daily;
   const dayIso = d.time[dayIndex];
-  const dayDate = new Date(dayIso);
-  const fmt = new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: forecast.timezone,
-  });
-  const target = fmt.format(dayDate);
-
+  // Open-Meteo daily.time is "YYYY-MM-DD" and hourly.time is
+  // "YYYY-MM-DDTHH:mm" — both already in the LOCATION'S local time.
+  // Comparing the date prefix is the right move; round-tripping through
+  // `new Date()` re-interprets them via UTC and shifts the day west.
+  const target = dayIso.slice(0, 10);
   const h = forecast.hourly;
-  // Pick hourly slots that fall on this local day.
   const indices = h.time
     .map((t, i) => ({ t, i }))
-    .filter(({ t }) => fmt.format(new Date(t)) === target)
+    .filter(({ t }) => t.slice(0, 10) === target)
     .map(({ i }) => i);
 
   if (indices.length === 0) {
@@ -101,7 +96,7 @@ function DayDetail({ forecast, dayIndex }: { forecast: Forecast; dayIndex: numbe
   for (let k = 0; k <= indices.length - 4; k++) {
     const win = scores.slice(k, k + 4);
     const m = win.reduce((a, b) => a + b.score, 0) / 4;
-    const hour = new Date(h.time[indices[k]]).getHours();
+    const hour = parseInt(h.time[indices[k]].slice(11, 13), 10);
     if (hour >= 6 && hour <= 18 && m > bestAvg) {
       bestAvg = m;
       bestStart = k;
