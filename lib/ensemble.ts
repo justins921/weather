@@ -1,10 +1,10 @@
 'use client';
 
 // Open-Meteo Ensemble API. ICON ensemble has ~40 perturbed members; the
-// spread between them at any given hour is a real measure of forecast
-// uncertainty. We collapse the members into median + p10/p90 so the
-// chart can draw a confidence band, and surface an avg-spread label
-// for the Coming Up summary sentence.
+// spread between members at any given hour is a real measure of forecast
+// uncertainty. We collapse members into median + p10/p90 per hour for
+// the variables the chart actually needs (temp + feels-like), and surface
+// an avg-spread label for the Coming Up summary sentence.
 
 export type EnsemblePoint = {
   time: string;
@@ -14,9 +14,13 @@ export type EnsemblePoint = {
   spread: number; // p90 - p10
 };
 
+export type EnsembleData = {
+  temperature_2m: EnsemblePoint[];
+  apparent_temperature: EnsemblePoint[];
+};
+
 export type ConfidenceLabel = {
   level: 'high' | 'moderate' | 'low';
-  // Empty string when spread is tight enough that no extra note is needed.
   message: string;
 };
 
@@ -24,15 +28,18 @@ type EnsembleResponse = {
   hourly?: Record<string, unknown>;
 };
 
-export async function fetchEnsemble(lat: number, lon: number): Promise<EnsemblePoint[]> {
+const EMPTY: EnsembleData = { temperature_2m: [], apparent_temperature: [] };
+
+export async function fetchEnsemble(lat: number, lon: number): Promise<EnsembleData> {
   const params = new URLSearchParams({
     latitude: String(lat),
     longitude: String(lon),
-    hourly: 'temperature_2m,precipitation_probability,wind_speed_10m',
+    // We need apparent_temperature for the Feels Like band and
+    // temperature_2m for the Temp band + confidence label. Wind / precip
+    // are intentionally absent — those views don't render a band.
+    hourly: 'temperature_2m,apparent_temperature',
     models: 'icon_seamless',
     temperature_unit: 'fahrenheit',
-    wind_speed_unit: 'mph',
-    precipitation_unit: 'inch',
     timezone: 'auto',
     forecast_days: '2',
   });
@@ -41,19 +48,25 @@ export async function fetchEnsemble(lat: number, lon: number): Promise<EnsembleP
       `https://ensemble-api.open-meteo.com/v1/ensemble?${params}`,
       { next: { revalidate: 1800 } },
     );
-    if (!res.ok) return [];
+    if (!res.ok) return EMPTY;
     const data = (await res.json()) as EnsembleResponse;
-    if (!data.hourly) return [];
-    return buildEnsembleSeries(data.hourly);
+    if (!data.hourly) return EMPTY;
+    return {
+      temperature_2m: buildEnsembleSeries(data.hourly, 'temperature_2m'),
+      apparent_temperature: buildEnsembleSeries(data.hourly, 'apparent_temperature'),
+    };
   } catch {
-    return [];
+    return EMPTY;
   }
 }
 
-export function buildEnsembleSeries(rawHourly: Record<string, unknown>): EnsemblePoint[] {
+export function buildEnsembleSeries(
+  rawHourly: Record<string, unknown>,
+  prefix: 'temperature_2m' | 'apparent_temperature',
+): EnsemblePoint[] {
   const times = (rawHourly.time as string[]) ?? [];
   const memberKeys = Object.keys(rawHourly).filter(
-    (k) => k.startsWith('temperature_2m_member') || k === 'temperature_2m',
+    (k) => k.startsWith(`${prefix}_member`) || k === prefix,
   );
   if (times.length === 0 || memberKeys.length === 0) return [];
 

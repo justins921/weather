@@ -19,7 +19,7 @@ import { fetchAlerts, type Alert } from '@/lib/alerts';
 import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
 import AirQualityCard from '@/components/AirQualityCard';
 import PollenCard from '@/components/PollenCard';
-import { confidenceLabel, fetchEnsemble, type EnsemblePoint } from '@/lib/ensemble';
+import { fetchEnsemble, type EnsembleData } from '@/lib/ensemble';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { cachedFetch } from '@/lib/clientCache';
 import { fmtMph, fmtTemp } from '@/lib/format';
@@ -38,7 +38,10 @@ import { weatherEmoji } from '@/lib/weatherCodes';
 export default function ForecastPage() {
   const [loc, setLoc] = useState<Location | null>(null);
   const [gfs, setGfs] = useState<Forecast | null>(null);
-  const [ensemble, setEnsemble] = useState<EnsemblePoint[]>([]);
+  const [ensemble, setEnsemble] = useState<EnsembleData>({
+    temperature_2m: [],
+    apparent_temperature: [],
+  });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
@@ -260,13 +263,7 @@ export default function ForecastPage() {
 
       <section>
         <div className="font-serif text-2xl font-bold tracking-tight">Coming up</div>
-        <div className="mt-1 text-base">
-          {comingUpSentence(gfs, alerts)}
-          {(() => {
-            const c = confidenceLabel(ensemble);
-            return c.message ? ` ${c.message}` : '';
-          })()}
-        </div>
+        <div className="mt-1 text-base">{comingUpSentence(gfs, alerts)}</div>
         <div className="mt-3">
           <HourlyBars forecast={gfs} height={36} />
         </div>
