@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetchForecast } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
+// AQ is still fetched (silently) so the Wear advice can use pollen as a
+// modifier — the AirQualityCard render itself is intentionally not shown
+// on the dashboard to keep the cards golf-focused.
 import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
-import AirQualityCard from './AirQualityCard';
 import { cachedFetch } from '@/lib/clientCache';
-import { fmtMph, fmtTemp } from '@/lib/format';
-import { dewPointLabel, comingUpSentence, rightNowSentence, windArrow, windCardinal } from '@/lib/narrative';
+import { fmtTemp } from '@/lib/format';
+import { comingUpSentence, rightNowSentence } from '@/lib/narrative';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { playability } from '@/lib/playability';
 import { setSelectedId, setLocationElevation } from '@/lib/locations';
@@ -16,7 +18,7 @@ import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
 import AlertsBanner from './AlertsBanner';
 import GolfCard from './GolfCard';
-import PressureTrendLine from './PressureTrendLine';
+import WearAdvicePanel from './WearAdvicePanel';
 
 type Props = {
   loc: Location;
@@ -166,8 +168,6 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
     obsFresh && obs?.wind_speed_mph != null ? obs.wind_speed_mph : c.wind_speed_10m;
   const displayGusts =
     obsFresh && obs?.wind_gusts_mph != null ? obs.wind_gusts_mph : c.wind_gusts_10m;
-  const displayWindDir =
-    obsFresh && obs?.wind_direction != null ? obs.wind_direction : c.wind_direction_10m;
   const displayHumidity =
     obsFresh && obs?.humidity != null ? obs.humidity : c.relative_humidity_2m;
   const displayDew = obsFresh && obs?.dewpoint_f != null ? obs.dewpoint_f : c.dew_point_2m;
@@ -245,7 +245,8 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             </a>
           </div>
 
-          {/* Same order as /forecast: Golf, then conditions detail, then AQ. */}
+          {/* Dashboard cards stay golf-focused: Golf + Wear, that's it.
+              Wind / Dew / AQ live on the full forecast page. */}
           <div className="mt-3">
             <GolfCard
               compact
@@ -257,35 +258,9 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
             />
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-                Wind
-              </div>
-              <div className="mt-1 text-base font-semibold">
-                {fmtMph(displayWind)} {windArrow(displayWindDir)}
-              </div>
-              <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-                From the {windCardinal(displayWindDir)}. Gusts to {Math.round(displayGusts)}mph.
-              </div>
-              <PressureTrendLine forecast={data} />
-            </div>
-            <div className="rounded-xl bg-black/5 p-3 dark:bg-white/5">
-              <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-                Dew Point
-              </div>
-              <div className="mt-1 text-base font-semibold">{fmtTemp(displayDew)} 💧</div>
-              <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-                {dewPointLabel(displayDew)}
-              </div>
-            </div>
+          <div className="mt-3">
+            <WearAdvicePanel forecast={data} pollen={airQuality?.pollen ?? null} />
           </div>
-
-          {airQuality && (
-            <div className="mt-3">
-              <AirQualityCard data={airQuality} />
-            </div>
-          )}
 
           <button
             onClick={(e) => {
