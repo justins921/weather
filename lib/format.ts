@@ -15,32 +15,55 @@ export function fmtPct(v: number | undefined | null): string {
   return `${Math.round(v)}%`;
 }
 
-export function fmtHourLocal(iso: string, timezone?: string): string {
-  const d = new Date(iso);
+// Open-Meteo with `timezone=auto` returns timestamps in the LOCATION'S
+// local time without a UTC offset suffix:
+//   hourly: "2026-05-04T15:00"
+//   daily : "2026-05-04"
+// `new Date(...)` interprets the first as the BROWSER'S local time and
+// the second as UTC midnight. Either path quietly shifts the displayed
+// hour or day off by one once you cross a timezone boundary (or render
+// on a UTC server). To stay honest, we force the iso strings to be
+// interpreted as if they were already UTC, then format in UTC — which
+// preserves the calendar values verbatim.
+function parseLocationLocal(iso: string): Date {
+  // Daily values are date-only ("YYYY-MM-DD") — pin to noon UTC so we
+  // never sit on a DST midnight edge.
+  if (iso.length === 10) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(Date.UTC(y, m - 1, d, 12));
+  }
+  // Hourly values look like "YYYY-MM-DDTHH:mm[:ss]" with no offset.
+  // Append Z to force UTC interpretation; we'll format in UTC so the
+  // wall-clock value is preserved.
+  const withZ = /Z|[+-]\d{2}:\d{2}$/.test(iso) ? iso : iso + 'Z';
+  return new Date(withZ);
+}
+
+export function fmtHourLocal(iso: string, _timezone?: string): string {
+  // _timezone parameter kept for backwards compat; ignored on purpose —
+  // see parseLocationLocal above for why.
   return new Intl.DateTimeFormat('en-US', {
     hour: 'numeric',
-    timeZone: timezone,
+    timeZone: 'UTC',
   })
-    .format(d)
+    .format(parseLocationLocal(iso))
     .toLowerCase()
     .replace(' ', '');
 }
 
-export function fmtDayShort(iso: string, timezone?: string): string {
-  const d = new Date(iso);
+export function fmtDayShort(iso: string, _timezone?: string): string {
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
-    timeZone: timezone,
-  }).format(d);
+    timeZone: 'UTC',
+  }).format(parseLocationLocal(iso));
 }
 
-export function fmtDateShort(iso: string, timezone?: string): string {
-  const d = new Date(iso);
+export function fmtDateShort(iso: string, _timezone?: string): string {
   return new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
-    timeZone: timezone,
-  }).format(d);
+    timeZone: 'UTC',
+  }).format(parseLocationLocal(iso));
 }
 
 // Map a temperature in F to a color from the gradient.
@@ -82,12 +105,12 @@ function mixHex(a: string, b: string, k: number): string {
   return `#${((r << 16) | (g << 8) | bl).toString(16).padStart(6, '0')}`;
 }
 
-export function isSameLocalDay(aIso: string, bIso: string, timezone?: string): boolean {
+export function isSameLocalDay(aIso: string, bIso: string, _timezone?: string): boolean {
   const fmt = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    timeZone: timezone,
+    timeZone: 'UTC',
   });
-  return fmt.format(new Date(aIso)) === fmt.format(new Date(bIso));
+  return fmt.format(parseLocationLocal(aIso)) === fmt.format(parseLocationLocal(bIso));
 }

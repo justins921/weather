@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import HourlyBars from '@/components/HourlyBars';
 import ForecastDiscussion from '@/components/ForecastDiscussion';
 import HourlyStrip from '@/components/HourlyStrip';
 import Next24HoursChart from '@/components/Next24HoursChart';
@@ -162,6 +161,18 @@ export default function ForecastPage() {
     }
   }
 
+  // Conditional Next-6-hours card. Only render when there's actually
+  // measurable precip in the next 24 fifteen-minute slots — otherwise
+  // it's a flat zero chart taking up space.
+  const minutely = gfs.minutely_15;
+  const expectingPrecip = !!minutely?.precipitation
+    ?.slice(0, 24)
+    .some((p) => typeof p === 'number' && p > 0.005);
+
+  // AQ + UV are half-cards when both exist; either alone goes full width.
+  const showUv = todayUv > 5;
+  const showAq = !!airQuality;
+
   return (
     <div className="space-y-5 px-4 pt-6">
       <header className="flex items-center justify-between">
@@ -177,9 +188,14 @@ export default function ForecastPage() {
 
       {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
 
+      {/* RIGHT NOW — feels-like is the headline number; raw temp is the
+          subline. The "what's coming" sentence is folded in here so the
+          old standalone Coming Up section can go away. */}
       <section>
         <div className="font-serif text-2xl font-bold tracking-tight">Right now</div>
-        <div className="mt-1 text-base">{rightNowSentence(gfs, obs)}</div>
+        <div className="mt-1 text-base">
+          {rightNowSentence(gfs, obs)} {comingUpSentence(gfs, alerts)}
+        </div>
         <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
           {obsFresh && obs && (
             <span>
@@ -199,9 +215,9 @@ export default function ForecastPage() {
         <div className="mt-3 flex items-center gap-4">
           <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</div>
           <div>
-            <div className="text-7xl font-semibold leading-none">{fmtTemp(displayTemp)}</div>
+            <div className="text-7xl font-semibold leading-none">{fmtTemp(displayFeels)}</div>
             <div className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">
-              Feels {fmtTemp(displayFeels)}
+              Air temp {fmtTemp(displayTemp)}
             </div>
           </div>
         </div>
@@ -230,52 +246,44 @@ export default function ForecastPage() {
             />
           )}
         </div>
-        <div className="mt-2">
-          <GolfCard
-            playability={score}
-            windSpeed={displayWind}
-            gusts={displayGusts}
-            airInputs={{
-              apparent_temp_f: displayFeels,
-              elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
-              surface_pressure_hpa: currentSurfacePressure(gfs),
-              relative_humidity: displayHumidity,
-            }}
-            soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
-          />
-        </div>
-        <div className="mt-2">
-          <AirQualityCard data={airQuality} />
-        </div>
-        <div className="mt-2">
-          <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
-        </div>
-        {todayUv > 5 && (
-          <div className="mt-2">
+      </section>
+
+      {/* Conditional: only when precip is actually expected in the window. */}
+      {expectingPrecip && minutely && (
+        <MinutelyChart minutely={minutely} timezone={gfs.timezone} />
+      )}
+
+      {/* Golf — playability + club wind + air density, all in one card. */}
+      <GolfCard
+        playability={score}
+        windSpeed={displayWind}
+        gusts={displayGusts}
+        airInputs={{
+          apparent_temp_f: displayFeels,
+          elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
+          surface_pressure_hpa: currentSurfacePressure(gfs),
+          relative_humidity: displayHumidity,
+        }}
+        soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
+      />
+
+      {/* AQ + UV. Half-width when both exist, otherwise full. */}
+      {(showAq || showUv) && (
+        <div className={showAq && showUv ? 'grid grid-cols-2 gap-2' : ''}>
+          {showAq && <AirQualityCard data={airQuality} />}
+          {showUv && (
             <MetricCard
               label="UV Index Today"
               value={`${Math.round(todayUv)}`}
               sub={uvAdvice(todayUv)}
             />
-          </div>
-        )}
-      </section>
-
-      <section>
-        <div className="font-serif text-2xl font-bold tracking-tight">Coming up</div>
-        <div className="mt-1 text-base">{comingUpSentence(gfs, alerts)}</div>
-        <div className="mt-3">
-          <HourlyBars forecast={gfs} height={36} />
+          )}
         </div>
-      </section>
-
-      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
-
-      {gfs.minutely_15 && (
-        <MinutelyChart minutely={gfs.minutely_15} timezone={gfs.timezone} />
       )}
 
-      <HourlyStrip forecast={gfs} />
+      <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
+
+      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
 
       <section>
         <div className="font-serif text-2xl font-bold tracking-tight">Next 24 Hours</div>
@@ -284,11 +292,13 @@ export default function ForecastPage() {
         </div>
       </section>
 
-      <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
+      <HourlyStrip forecast={gfs} />
+
+      <WeeklyForecast forecast={gfs} />
 
       <InlineRadar lat={loc.lat} lon={loc.lon} />
 
-      <WeeklyForecast forecast={gfs} />
+      <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
     </div>
   );
 }
