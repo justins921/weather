@@ -80,9 +80,20 @@ export default function RightNowDetail({
       : null;
   const pressureLabel = trend ? trend.label.replace(' pressure', '') : 'Steady';
 
-  // Visibility: meters → miles with one decimal.
-  const visM = hourlyAt(forecast, 'visibility', 0);
-  const visMi = typeof visM === 'number' ? +(visM * 0.000621371).toFixed(1) : null;
+  // Visibility: meters → miles, capped at 10. Open-Meteo's modelled
+  // visibility can spike to 50–100+ mi under perfect optical conditions
+  // (clean air, low humidity), which isn't physically meaningful for
+  // surface viewing. Apple Weather / AccuWeather / weather.com all cap
+  // the display the same way; "10+ mi" reads as "you can see fine".
+  const visMRaw = hourlyAt(forecast, 'visibility', 0);
+  const visMiRaw = typeof visMRaw === 'number' ? visMRaw * 0.000621371 : null;
+  const visDisplay =
+    visMiRaw == null
+      ? '—'
+      : visMiRaw >= 10
+        ? '10+ mi'
+        : `${visMiRaw.toFixed(1)} mi`;
+  const visLabel = visMiRaw == null ? '—' : visibilityLabel(Math.min(10, visMiRaw));
 
   const moon = moonPhase();
 
@@ -164,11 +175,7 @@ export default function RightNowDetail({
               </span>
             }
           />
-          <Tile
-            label="Visibility"
-            value={visMi != null ? `${visMi} mi` : '—'}
-            sub={visMi != null ? visibilityLabel(visMi) : '—'}
-          />
+          <Tile label="Visibility" value={visDisplay} sub={visLabel} />
           <Tile
             label="Moon Phase"
             value={moon.emoji}
