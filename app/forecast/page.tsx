@@ -17,7 +17,6 @@ import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchForecast } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
 import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
-import AirQualityCard from '@/components/AirQualityCard';
 import PollenCard from '@/components/PollenCard';
 import { fetchEnsemble, type EnsembleData } from '@/lib/ensemble';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
@@ -163,8 +162,6 @@ export default function ForecastPage() {
     ?.slice(0, 24)
     .some((p) => typeof p === 'number' && p > 0.005);
 
-  const showAq = !!airQuality;
-
   return (
     <div className="space-y-5 px-4 pt-6">
       <header className="flex items-center justify-between">
@@ -258,12 +255,6 @@ export default function ForecastPage() {
       />
 
       <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
-
-      {/* The full Air Quality card stays — it adds the trend arrow,
-          peak time, and the wildfire banner that the small AQ tile in
-          Right Now's expandable detail doesn't carry. UV is covered by
-          the tile up there; no separate UV card needed. */}
-      {showAq && <AirQualityCard data={airQuality} />}
 
       <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
 
