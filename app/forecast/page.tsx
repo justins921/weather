@@ -11,8 +11,7 @@ import AlertsBanner from '@/components/AlertsBanner';
 import BestTeeTimeCard from '@/components/BestTeeTimeCard';
 import SunsetCheckWidget from '@/components/SunsetCheckWidget';
 import GolfCard from '@/components/GolfCard';
-import MetricCard from '@/components/MetricCard';
-import PressureTrendLine from '@/components/PressureTrendLine';
+import RightNowDetail from '@/components/RightNowDetail';
 import MinutelyChart from '@/components/MinutelyChart';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchForecast } from '@/lib/api';
@@ -23,15 +22,9 @@ import PollenCard from '@/components/PollenCard';
 import { fetchEnsemble, type EnsembleData } from '@/lib/ensemble';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
 import { cachedFetch } from '@/lib/clientCache';
-import { fmtMph, fmtTemp } from '@/lib/format';
+import { fmtTemp } from '@/lib/format';
 import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
-import {
-  comingUpSentence,
-  dewPointLabel,
-  rightNowSentence,
-  windArrow,
-  windCardinal,
-} from '@/lib/narrative';
+import { comingUpSentence, rightNowSentence } from '@/lib/narrative';
 import { playability } from '@/lib/playability';
 import type { Forecast, Location } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
@@ -152,7 +145,6 @@ export default function ForecastPage() {
   });
 
   const todayUv = gfs.daily.uv_index_max[0];
-  const dewExtreme = displayDew >= 70 || displayDew < 30;
 
   function share() {
     const url = window.location.href;
@@ -171,8 +163,6 @@ export default function ForecastPage() {
     ?.slice(0, 24)
     .some((p) => typeof p === 'number' && p > 0.005);
 
-  // AQ + UV are half-cards when both exist; either alone goes full width.
-  const showUv = todayUv > 5;
   const showAq = !!airQuality;
 
   return (
@@ -228,6 +218,20 @@ export default function ForecastPage() {
             </div>
           </div>
         </div>
+        <div className="mt-3">
+          <RightNowDetail
+            forecast={gfs}
+            windSpeed={displayWind}
+            windDir={displayWindDir}
+            windGusts={displayGusts}
+            humidity={displayHumidity}
+            dewPoint={displayDew}
+            highF={gfs.daily.temperature_2m_max[0]}
+            lowF={gfs.daily.temperature_2m_min[0]}
+            uvMax={todayUv}
+            airQuality={airQuality}
+          />
+        </div>
       </section>
 
       {/* Best Tee Time — the prime slot. Single most-actionable answer
@@ -255,45 +259,11 @@ export default function ForecastPage() {
 
       <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
 
-      {/* Conditions detail: Wind + Humidity/Dew on the first row,
-          Air Quality + UV on the second when both exist. */}
-      <div className="grid grid-cols-2 gap-2">
-        <MetricCard
-          label="Wind"
-          value={
-            <span>
-              {fmtMph(displayWind)} {windArrow(displayWindDir)}
-            </span>
-          }
-          sub={`From the ${windCardinal(displayWindDir)}. Gusts to ${Math.round(displayGusts)}mph.`}
-          footer={<PressureTrendLine forecast={gfs} />}
-        />
-        {dewExtreme ? (
-          <MetricCard
-            label="Dew Point"
-            value={`${fmtTemp(displayDew)} 💧`}
-            sub={dewPointLabel(displayDew)}
-          />
-        ) : (
-          <MetricCard
-            label="Humidity"
-            value={`${Math.round(displayHumidity)}%`}
-            sub={`Dew ${fmtTemp(displayDew)} · ${dewPointLabel(displayDew)}`}
-          />
-        )}
-      </div>
-      {(showAq || showUv) && (
-        <div className={showAq && showUv ? 'grid grid-cols-2 gap-2' : ''}>
-          {showAq && <AirQualityCard data={airQuality} />}
-          {showUv && (
-            <MetricCard
-              label="UV Index Today"
-              value={`${Math.round(todayUv)}`}
-              sub={uvAdvice(todayUv)}
-            />
-          )}
-        </div>
-      )}
+      {/* The full Air Quality card stays — it adds the trend arrow,
+          peak time, and the wildfire banner that the small AQ tile in
+          Right Now's expandable detail doesn't carry. UV is covered by
+          the tile up there; no separate UV card needed. */}
+      {showAq && <AirQualityCard data={airQuality} />}
 
       <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
 
@@ -361,9 +331,3 @@ function currentSurfacePressure(f: Forecast): number {
   return f.hourly.surface_pressure?.[idx] ?? 1013;
 }
 
-function uvAdvice(uv: number): string {
-  if (uv >= 11) return 'Extreme. Cover up.';
-  if (uv >= 8) return 'Very high. Sunscreen + hat.';
-  if (uv >= 6) return 'High. Sunscreen recommended.';
-  return 'Moderate.';
-}

@@ -66,6 +66,50 @@ export function fmtDateShort(iso: string, _timezone?: string): string {
   }).format(parseLocationLocal(iso));
 }
 
+// Beaufort scale label for a sustained or gust speed in mph. Used for
+// the qualitative subtitle on the wind-gust tile ("Light Breeze" etc.).
+export function beaufortLabel(mph: number): string {
+  if (mph < 1) return 'Calm';
+  if (mph < 4) return 'Light Air';
+  if (mph < 8) return 'Light Breeze';
+  if (mph < 13) return 'Gentle Breeze';
+  if (mph < 19) return 'Moderate Breeze';
+  if (mph < 25) return 'Fresh Breeze';
+  if (mph < 32) return 'Strong Breeze';
+  if (mph < 39) return 'Near Gale';
+  if (mph < 47) return 'Gale';
+  if (mph < 55) return 'Strong Gale';
+  if (mph < 64) return 'Storm';
+  return 'Hurricane Force';
+}
+
+// Visibility category from miles. Tuned for outdoor/golf relevance —
+// over ~6 mi everything beyond the next fairway is sharp.
+export function visibilityLabel(miles: number): string {
+  if (miles < 1) return 'Very Poor';
+  if (miles < 3) return 'Poor';
+  if (miles < 6) return 'Moderate';
+  if (miles < 10) return 'Good';
+  return 'Excellent';
+}
+
+// Short UV category for a tile.
+export function uvShort(uv: number): string {
+  if (uv >= 11) return 'Extreme';
+  if (uv >= 8) return 'Very High';
+  if (uv >= 6) return 'High';
+  if (uv >= 3) return 'Moderate';
+  return 'Low';
+}
+
+export function uvColor(uv: number): string {
+  if (uv >= 11) return '#7f1d1d';
+  if (uv >= 8) return '#dc2626';
+  if (uv >= 6) return '#f97316';
+  if (uv >= 3) return '#eab308';
+  return '#22c55e';
+}
+
 // Map a temperature in F to a color from the gradient.
 export function tempColor(t: number): string {
   // Stops: 20 cold, 40 cool, 60 mild, 75 warm, 88 hot, 100 very hot.
