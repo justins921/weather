@@ -132,19 +132,46 @@ export async function fetchForecast(
   model: 'gfs_seamless' | 'ecmwf_ifs025' = 'gfs_seamless',
 ): Promise<Forecast> {
   const url = buildForecastURL(lat, lon, model);
-  return openMeteoGate(async () => {
-    const res = await fetchWithRetry(url, { next: { revalidate: 1800 } }, 'Forecast fetch');
-    return (await res.json()) as Forecast;
-  });
+  try {
+    return await openMeteoGate(async () => {
+      const res = await fetchWithRetry(url, { next: { revalidate: 1800 } }, 'Forecast fetch');
+      return (await res.json()) as Forecast;
+    });
+  } catch (err) {
+    // Open-Meteo down or unreachable: try the MET Norway fallback proxy.
+    // Some Open-Meteo fields (visibility, soil_moisture, minutely_15) are
+    // approximated or missing; we'd rather render slightly degraded data
+    // than fail every card.
+    const fallback = await fetchMETFallback(lat, lon);
+    if (fallback) return fallback;
+    throw err;
+  }
 }
 
 export async function fetchMinutely(lat: number, lon: number): Promise<Forecast> {
   // Same endpoint, shorter cache for 15-min nowcast freshness.
   const url = buildForecastURL(lat, lon, 'gfs_seamless');
-  return openMeteoGate(async () => {
-    const res = await fetchWithRetry(url, { next: { revalidate: 600 } }, 'Minutely fetch');
-    return (await res.json()) as Forecast;
-  });
+  try {
+    return await openMeteoGate(async () => {
+      const res = await fetchWithRetry(url, { next: { revalidate: 600 } }, 'Minutely fetch');
+      return (await res.json()) as Forecast;
+    });
+  } catch (err) {
+    const fallback = await fetchMETFallback(lat, lon);
+    if (fallback) return fallback;
+    throw err;
+  }
+}
+
+async function fetchMETFallback(lat: number, lon: number): Promise<Forecast | null> {
+  try {
+    const res = await fetch(`/api/forecast-fallback?lat=${lat}&lon=${lon}`);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { ok: boolean; forecast?: Forecast };
+    return data.ok && data.forecast ? data.forecast : null;
+  } catch {
+    return null;
+  }
 }
 
 

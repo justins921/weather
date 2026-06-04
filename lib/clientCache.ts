@@ -50,6 +50,23 @@ export async function cachedFetch<T>(key: string, ttlMs: number, fn: () => Promi
         }
       }
       return data;
+    } catch (err) {
+      // Upstream outage: hand back the last-known-good entry even if it's
+      // past TTL. Better to render slightly stale data than fail every card.
+      const stale = mem.get(key) as Entry<T> | undefined;
+      if (stale) return stale.data;
+      if (typeof window !== 'undefined') {
+        try {
+          const raw = window.sessionStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw) as Entry<T>;
+            return parsed.data;
+          }
+        } catch {
+          /* ignore */
+        }
+      }
+      throw err;
     } finally {
       inFlight.delete(key);
     }
