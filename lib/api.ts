@@ -58,9 +58,36 @@ const DAILY_VARS = [
 
 // Open-Meteo's free tier rate-limits aggressively when the Locations
 // dashboard fans out (one card per location + course comparison row).
-// On a 429 we wait and retry instead of bubbling the error straight to
-// the card, which previously left every tile reading "Forecast fetch
-// failed: 429" until the user reloaded.
+// Two-layer defense:
+//   1. openMeteoGate caps concurrent Open-Meteo requests app-wide. With
+//      7 locations × (forecast + air-quality) we'd otherwise burst ~14
+//      requests in a single tick.
+//   2. fetchWithRetry handles 429s that still slip through, with jittered
+//      backoff so 7 stuck requests don't all retry on the same millisecond.
+
+const MAX_CONCURRENT = 3;
+let active = 0;
+const waiters: Array<() => void> = [];
+
+export function openMeteoGate<T>(fn: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const run = async () => {
+      active++;
+      try {
+        resolve(await fn());
+      } catch (e) {
+        reject(e);
+      } finally {
+        active--;
+        const next = waiters.shift();
+        if (next) next();
+      }
+    };
+    if (active < MAX_CONCURRENT) run();
+    else waiters.push(run);
+  });
+}
+
 async function fetchWithRetry(url: string, init: RequestInit, label: string): Promise<Response> {
   const delays = [1000, 3000, 7000];
   for (let attempt = 0; attempt < delays.length + 1; attempt++) {
@@ -70,9 +97,11 @@ async function fetchWithRetry(url: string, init: RequestInit, label: string): Pr
       throw new Error(`${label} failed: ${res.status}`);
     }
     const retryAfter = Number(res.headers.get('retry-after'));
-    const wait = Number.isFinite(retryAfter) && retryAfter > 0
+    const base = Number.isFinite(retryAfter) && retryAfter > 0
       ? retryAfter * 1000
       : delays[attempt];
+    // Jitter prevents all parallel callers from retrying on the same tick.
+    const wait = base + Math.random() * 500;
     await new Promise((r) => setTimeout(r, wait));
   }
   throw new Error(`${label} failed: exhausted retries`);
@@ -103,15 +132,19 @@ export async function fetchForecast(
   model: 'gfs_seamless' | 'ecmwf_ifs025' = 'gfs_seamless',
 ): Promise<Forecast> {
   const url = buildForecastURL(lat, lon, model);
-  const res = await fetchWithRetry(url, { next: { revalidate: 1800 } }, 'Forecast fetch');
-  return (await res.json()) as Forecast;
+  return openMeteoGate(async () => {
+    const res = await fetchWithRetry(url, { next: { revalidate: 1800 } }, 'Forecast fetch');
+    return (await res.json()) as Forecast;
+  });
 }
 
 export async function fetchMinutely(lat: number, lon: number): Promise<Forecast> {
   // Same endpoint, shorter cache for 15-min nowcast freshness.
   const url = buildForecastURL(lat, lon, 'gfs_seamless');
-  const res = await fetchWithRetry(url, { next: { revalidate: 600 } }, 'Minutely fetch');
-  return (await res.json()) as Forecast;
+  return openMeteoGate(async () => {
+    const res = await fetchWithRetry(url, { next: { revalidate: 600 } }, 'Minutely fetch');
+    return (await res.json()) as Forecast;
+  });
 }
 
 

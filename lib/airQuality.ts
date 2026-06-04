@@ -1,5 +1,7 @@
 'use client';
 
+import { openMeteoGate } from './api';
+
 // Air quality. Two complementary sources:
 //   1. EPA AirNow (real monitoring stations, US-only). Server-proxied via
 //      /api/airnow so the API key stays out of the client bundle. Used
@@ -209,7 +211,9 @@ async function fetchOpenMeteoAQ(lat: number, lon: number): Promise<OpenMeteoData
     forecast_days: '3',
   });
   try {
-    const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`);
+    const res = await openMeteoGate(() =>
+      fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`),
+    );
     if (!res.ok) return null;
     const data = (await res.json()) as OMResponse;
     const h = data.hourly;

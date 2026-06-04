@@ -10,7 +10,12 @@ const EXPANDED_KEY = 'weather.expandedIds';
 // Bump when adding new entries to DEFAULT_LOCATIONS. On load, any default
 // whose id isn't already in the saved list gets appended once. Removing a
 // default by hand still sticks (we only run this once per version bump).
-const CURRENT_DEFAULTS_VERSION = 2;
+const CURRENT_DEFAULTS_VERSION = 3;
+
+// Ids that used to be in DEFAULT_LOCATIONS but were dropped. On a version
+// bump these get filtered out of the user's saved list so old seeds don't
+// linger forever.
+const REMOVED_DEFAULT_IDS = new Set<string>(['wisconsin-cc']);
 
 export const DEFAULT_LOCATIONS: Location[] = [
   { id: 'lake-breeze', name: 'Lake Breeze', lat: 44.0847, lon: -88.5426 },
@@ -21,7 +26,6 @@ export const DEFAULT_LOCATIONS: Location[] = [
   // effectively the same. Tune via "Add by coordinates" if you want exact.
   { id: 'utica-gc', name: 'Utica Golf Club', lat: 44.0247, lon: -88.5426 },
   { id: 'tpc-danzante-bay', name: 'TPC Danzante Bay', lat: 26.0122, lon: -111.3489 },
-  { id: 'wisconsin-cc', name: 'Wisconsin CC', lat: 43.1353, lon: -87.9356 },
   { id: 'tpc-wisconsin', name: 'TPC Wisconsin', lat: 42.9908, lon: -89.5332 },
 ];
 
@@ -54,10 +58,21 @@ export function loadLocations(): Location[] {
       10,
     );
     if (savedVersion < CURRENT_DEFAULTS_VERSION) {
+      let mutated = false;
+      // Prune any defaults we've since removed.
+      const pruned = parsed.filter((l) => !REMOVED_DEFAULT_IDS.has(l.id));
+      if (pruned.length !== parsed.length) {
+        parsed = pruned;
+        mutated = true;
+      }
+      // Add any new defaults the user hasn't seen yet.
       const existingIds = new Set(parsed.map((l) => l.id));
       const newDefaults = DEFAULT_LOCATIONS.filter((d) => !existingIds.has(d.id));
       if (newDefaults.length > 0) {
         parsed = [...parsed, ...newDefaults];
+        mutated = true;
+      }
+      if (mutated) {
         window.localStorage.setItem(LOCATIONS_KEY, JSON.stringify(sortCurrentFirst(parsed)));
       }
       window.localStorage.setItem(DEFAULTS_VERSION_KEY, String(CURRENT_DEFAULTS_VERSION));

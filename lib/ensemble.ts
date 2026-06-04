@@ -1,5 +1,7 @@
 'use client';
 
+import { openMeteoGate } from './api';
+
 // Open-Meteo Ensemble API. ICON ensemble has ~40 perturbed members; the
 // spread between members at any given hour is a real measure of forecast
 // uncertainty. We collapse members into median + p10/p90 per hour for
@@ -44,9 +46,10 @@ export async function fetchEnsemble(lat: number, lon: number): Promise<EnsembleD
     forecast_days: '2',
   });
   try {
-    const res = await fetch(
-      `https://ensemble-api.open-meteo.com/v1/ensemble?${params}`,
-      { next: { revalidate: 1800 } },
+    const res = await openMeteoGate(() =>
+      fetch(`https://ensemble-api.open-meteo.com/v1/ensemble?${params}`, {
+        next: { revalidate: 1800 },
+      }),
     );
     if (!res.ok) return EMPTY;
     const data = (await res.json()) as EnsembleResponse;
