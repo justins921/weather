@@ -56,6 +56,28 @@ const DAILY_VARS = [
   'uv_index_max',
 ].join(',');
 
+// Open-Meteo's free tier rate-limits aggressively when the Locations
+// dashboard fans out (one card per location + course comparison row).
+// On a 429 we wait and retry instead of bubbling the error straight to
+// the card, which previously left every tile reading "Forecast fetch
+// failed: 429" until the user reloaded.
+async function fetchWithRetry(url: string, init: RequestInit, label: string): Promise<Response> {
+  const delays = [1000, 3000, 7000];
+  for (let attempt = 0; attempt < delays.length + 1; attempt++) {
+    const res = await fetch(url, init);
+    if (res.ok) return res;
+    if (res.status !== 429 || attempt === delays.length) {
+      throw new Error(`${label} failed: ${res.status}`);
+    }
+    const retryAfter = Number(res.headers.get('retry-after'));
+    const wait = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : delays[attempt];
+    await new Promise((r) => setTimeout(r, wait));
+  }
+  throw new Error(`${label} failed: exhausted retries`);
+}
+
 function buildForecastURL(lat: number, lon: number, model: 'gfs_seamless' | 'ecmwf_ifs025'): string {
   const params = new URLSearchParams({
     latitude: String(lat),
@@ -81,16 +103,14 @@ export async function fetchForecast(
   model: 'gfs_seamless' | 'ecmwf_ifs025' = 'gfs_seamless',
 ): Promise<Forecast> {
   const url = buildForecastURL(lat, lon, model);
-  const res = await fetch(url, { next: { revalidate: 1800 } });
-  if (!res.ok) throw new Error(`Forecast fetch failed: ${res.status}`);
+  const res = await fetchWithRetry(url, { next: { revalidate: 1800 } }, 'Forecast fetch');
   return (await res.json()) as Forecast;
 }
 
 export async function fetchMinutely(lat: number, lon: number): Promise<Forecast> {
   // Same endpoint, shorter cache for 15-min nowcast freshness.
   const url = buildForecastURL(lat, lon, 'gfs_seamless');
-  const res = await fetch(url, { next: { revalidate: 600 } });
-  if (!res.ok) throw new Error(`Minutely fetch failed: ${res.status}`);
+  const res = await fetchWithRetry(url, { next: { revalidate: 600 } }, 'Minutely fetch');
   return (await res.json()) as Forecast;
 }
 

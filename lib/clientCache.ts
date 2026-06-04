@@ -1,10 +1,17 @@
 'use client';
 
-// Memory + sessionStorage cache for forecast data. Keeps API calls down
-// when navigating between Locations and Forecast pages.
+// Memory + sessionStorage cache for forecast data, with in-flight request
+// deduplication. The dedup is the important bit: when the Locations
+// dashboard mounts, every LocationCard plus the CourseComparison row
+// each calls cachedFetch with the same key in parallel. Without dedup,
+// they all see an empty cache, all fire the network, and we burn through
+// rate limits in one page load. With dedup, the first call starts the
+// request and every subsequent in-flight caller awaits the same promise.
+
 type Entry<T> = { at: number; data: T };
 
 const mem = new Map<string, Entry<unknown>>();
+const inFlight = new Map<string, Promise<unknown>>();
 
 export async function cachedFetch<T>(key: string, ttlMs: number, fn: () => Promise<T>): Promise<T> {
   const now = Date.now();
@@ -26,15 +33,27 @@ export async function cachedFetch<T>(key: string, ttlMs: number, fn: () => Promi
     }
   }
 
-  const data = await fn();
-  const entry: Entry<T> = { at: now, data };
-  mem.set(key, entry);
-  if (typeof window !== 'undefined') {
+  // Coalesce parallel callers onto a single network round-trip per key.
+  const existing = inFlight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+
+  const promise = (async () => {
     try {
-      window.sessionStorage.setItem(key, JSON.stringify(entry));
-    } catch {
-      /* quota */
+      const data = await fn();
+      const entry: Entry<T> = { at: Date.now(), data };
+      mem.set(key, entry);
+      if (typeof window !== 'undefined') {
+        try {
+          window.sessionStorage.setItem(key, JSON.stringify(entry));
+        } catch {
+          /* quota */
+        }
+      }
+      return data;
+    } finally {
+      inFlight.delete(key);
     }
-  }
-  return data;
+  })();
+  inFlight.set(key, promise);
+  return promise;
 }
