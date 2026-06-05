@@ -57,23 +57,18 @@ Or push to GitHub and import the repo in the Vercel dashboard — Vercel will au
 3. Wait for DNS to propagate (usually minutes; up to 24 hours).
 4. Vercel will automatically issue an SSL certificate.
 
-## Replacing Placeholder Content
+## Content & Assets
 
-Search `index.html` for `<!-- PLACEHOLDER:` to find spots that need real content:
+This build mirrors the live Webflow site at `donwellslawnandsnow.com`:
 
-| What                       | Where                                                                       |
-| -------------------------- | --------------------------------------------------------------------------- |
-| Phone number               | Contact card + footer (`tel:+19205550000`)                                  |
-| Email address              | Contact card + footer (`info@donwellslawnandsnow.com`)                      |
-| Street address             | JSON-LD `LocalBusiness` schema in the `<head>`                              |
-| Hero photo                 | `.hero` `background-image` URL — currently an Unsplash placeholder         |
-| Hours / service area copy  | Contact card and footer                                                     |
-
-The JSON-LD `LocalBusiness` block in `<head>` also has placeholders for `telephone` and `streetAddress` — update those for SEO.
+- Phone (`920-960-5547`) and email (`info@donwellslawnandsnow.com`) are baked into the nav, hero, services CTA, contact section, and JSON-LD schema. Search/replace if either changes.
+- All imagery (logo, hero photo, services photo background, recent-work gallery, icons, favicons) is loaded directly from the existing Webflow CDN (`cdn.prod.website-files.com/62f127428399f684d8437793/...`). To move off Webflow's CDN, download those assets into a local `/public` folder and update the URLs.
+- The JSON-LD `LocalBusiness` block in `<head>` has a stub address (Fond du Lac, WI 54935) — add `streetAddress` when you have one.
+- Form fields match Webflow: Name, Email, Phone Number, Address, Message.
 
 ## How the Contact Form Works
 
-1. User fills out `#quoteForm` in `index.html`.
+1. User fills out the "Get a Free Estimate" form in `index.html` (Name, Email, Phone, Address, Message).
 2. Vanilla JS posts JSON to `/api/contact`.
 3. `api/contact.js` validates required fields, checks the honeypot, requires a 10+ character message, then sends a formatted HTML email via Resend.
 4. `replyTo` is set to the submitter's email, so hitting "Reply" goes straight to them.

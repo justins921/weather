@@ -26,8 +26,6 @@ export default async function handler(req, res) {
     email = '',
     phone = '',
     address = '',
-    propertyType = '',
-    services = [],
     message = '',
     website = '' // honeypot
   } = body;
@@ -39,6 +37,8 @@ export default async function handler(req, res) {
 
   const cleanName = String(name).trim();
   const cleanEmail = String(email).trim();
+  const cleanPhone = String(phone).trim();
+  const cleanAddress = String(address).trim();
   const cleanMessage = String(message).trim();
 
   if (!cleanName || !cleanEmail || !cleanMessage) {
@@ -59,43 +59,35 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Server email configuration missing.' });
   }
 
-  const serviceList = Array.isArray(services) ? services.filter(Boolean) : [];
-  const servicesHtml = serviceList.length
-    ? `<ul>${serviceList.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>`
-    : '<p style="color:#888;">None selected</p>';
-
   const row = (label, value) => `
     <tr>
-      <td style="padding:8px 12px;border:1px solid #e6e1d6;background:#faf8f3;font-weight:600;width:160px;">${escapeHtml(label)}</td>
-      <td style="padding:8px 12px;border:1px solid #e6e1d6;">${value || '<span style="color:#888;">—</span>'}</td>
+      <td style="padding:10px 14px;border:1px solid #e6e6e6;background:#f6f6f6;font-weight:600;width:170px;color:#333;">${escapeHtml(label)}</td>
+      <td style="padding:10px 14px;border:1px solid #e6e6e6;color:#222;">${value || '<span style="color:#888;">&mdash;</span>'}</td>
     </tr>`;
 
   const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color:#1a1a1a; max-width:640px;">
-      <h2 style="color:#2d5016; margin:0 0 16px;">New Quote Request — Don Wells Lawn Care</h2>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color:#222; max-width:640px;">
+      <h2 style="color:#8dc100; margin:0 0 6px; font-family: Montserrat, sans-serif;">New Free Estimate Request</h2>
+      <p style="color:#666; margin:0 0 20px;">Don Wells Lawn &amp; Snow &mdash; donwellslawnandsnow.com</p>
       <table style="border-collapse:collapse;width:100%;font-size:14px;">
         ${row('Name', escapeHtml(cleanName))}
-        ${row('Email', `<a href="mailto:${escapeHtml(cleanEmail)}">${escapeHtml(cleanEmail)}</a>`)}
-        ${row('Phone', escapeHtml(phone))}
-        ${row('Property Address', escapeHtml(address))}
-        ${row('Property Type', escapeHtml(propertyType))}
-        ${row('Services', servicesHtml)}
+        ${row('Email', `<a href="mailto:${escapeHtml(cleanEmail)}" style="color:#7aa800;">${escapeHtml(cleanEmail)}</a>`)}
+        ${row('Phone', cleanPhone ? `<a href="tel:${escapeHtml(cleanPhone)}" style="color:#7aa800;">${escapeHtml(cleanPhone)}</a>` : '')}
+        ${row('Address', escapeHtml(cleanAddress))}
       </table>
-      <h3 style="margin:24px 0 8px;color:#2d5016;">Message</h3>
-      <div style="white-space:pre-wrap;padding:12px;background:#faf8f3;border:1px solid #e6e1d6;border-radius:8px;font-size:14px;">${escapeHtml(cleanMessage)}</div>
-      <p style="margin-top:24px;font-size:12px;color:#888;">Submitted via donwellslawnandsnow.com</p>
+      <h3 style="margin:24px 0 8px;color:#8dc100;font-family: Montserrat, sans-serif;">Message</h3>
+      <div style="white-space:pre-wrap;padding:14px;background:#f6f6f6;border:1px solid #e6e6e6;border-radius:6px;font-size:14px;line-height:1.55;">${escapeHtml(cleanMessage)}</div>
+      <p style="margin-top:24px;font-size:12px;color:#888;">Reply directly to this email to respond to ${escapeHtml(cleanName)}.</p>
     </div>
   `;
 
   const text = [
-    `New Quote Request — Don Wells Lawn Care`,
+    `New Free Estimate Request — Don Wells Lawn & Snow`,
     ``,
     `Name: ${cleanName}`,
     `Email: ${cleanEmail}`,
-    `Phone: ${phone || '—'}`,
-    `Property Address: ${address || '—'}`,
-    `Property Type: ${propertyType || '—'}`,
-    `Services: ${serviceList.length ? serviceList.join(', ') : '—'}`,
+    `Phone: ${cleanPhone || '—'}`,
+    `Address: ${cleanAddress || '—'}`,
     ``,
     `Message:`,
     cleanMessage,
@@ -109,7 +101,7 @@ export default async function handler(req, res) {
       from: fromEmail,
       to: toEmail,
       replyTo: cleanEmail,
-      subject: `New Quote Request from ${cleanName}`,
+      subject: `New estimate request from ${cleanName}`,
       html,
       text
     });
