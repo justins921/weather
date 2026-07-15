@@ -163,6 +163,45 @@ export async function fetchMinutely(lat: number, lon: number): Promise<Forecast>
   }
 }
 
+export type PrecipHistory = {
+  dates: string[]; // "YYYY-MM-DD", oldest first, includes today
+  totals: number[]; // inches per day, aligned with dates
+};
+
+// Past-7-days daily precip totals for the Rain Story card. Uses the forecast
+// endpoint's past_days=7 rather than the archive API — archive has multi-day
+// lag; past_days blends measured + reanalysis right up to today. Degrades to
+// null on any failure so the Rain Story card can hide the past-7-days pill
+// without breaking anything.
+export async function fetchPrecipHistory(lat: number, lon: number): Promise<PrecipHistory | null> {
+  const params = new URLSearchParams({
+    latitude: String(lat),
+    longitude: String(lon),
+    daily: 'precipitation_sum',
+    timezone: 'auto',
+    past_days: '7',
+    forecast_days: '1',
+    precipitation_unit: 'inch',
+  });
+  try {
+    return await openMeteoGate(async () => {
+      const res = await fetch(`${FORECAST_URL}?${params.toString()}`, {
+        next: { revalidate: 3600 },
+      });
+      if (!res.ok) return null;
+      const data = (await res.json()) as {
+        daily?: { time?: string[]; precipitation_sum?: Array<number | null> };
+      };
+      const time = data.daily?.time ?? [];
+      if (time.length === 0) return null;
+      const totals = (data.daily?.precipitation_sum ?? []).map((v) => v ?? 0);
+      return { dates: time, totals };
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function fetchMETFallback(lat: number, lon: number): Promise<Forecast | null> {
   try {
     const res = await fetch(`/api/forecast-fallback?lat=${lat}&lon=${lon}`);

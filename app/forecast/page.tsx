@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ForecastDiscussion from '@/components/ForecastDiscussion';
 import HourlyStrip from '@/components/HourlyStrip';
 import Next24HoursChart from '@/components/Next24HoursChart';
+import RainStory from '@/components/RainStory';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
 import InlineRadar from '@/components/InlineRadar';
 import AlertsBanner from '@/components/AlertsBanner';
@@ -14,7 +15,7 @@ import GolfCard from '@/components/GolfCard';
 import RightNowDetail from '@/components/RightNowDetail';
 import MinutelyChart from '@/components/MinutelyChart';
 import WeeklyForecast from '@/components/WeeklyForecast';
-import { fetchForecast } from '@/lib/api';
+import { fetchForecast, fetchPrecipHistory, type PrecipHistory } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
 import { fetchAirQuality, type AirQualityReading } from '@/lib/airQuality';
 import PollenCard from '@/components/PollenCard';
@@ -38,6 +39,7 @@ export default function ForecastPage() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
+  const [precipHistory, setPrecipHistory] = useState<PrecipHistory | null>(null);
 
   useEffect(() => {
     const sel = getSelectedLocation();
@@ -86,6 +88,15 @@ export default function ForecastPage() {
     )
       .then((aq) => {
         if (!cancelled) setAirQuality(aq);
+      })
+      .catch(() => {});
+    // Past-7-day precip totals for the Rain Story card. 1-hour cache since
+    // daily totals only meaningfully change at midnight.
+    cachedFetch(`ph:${sel.lat},${sel.lon}`, 60 * 60 * 1000, () =>
+      fetchPrecipHistory(sel.lat, sel.lon),
+    )
+      .then((h) => {
+        if (!cancelled) setPrecipHistory(h);
       })
       .catch(() => {});
     return () => {
@@ -268,6 +279,8 @@ export default function ForecastPage() {
       <HourlyStrip forecast={gfs} />
 
       <WeeklyForecast forecast={gfs} />
+
+      <RainStory forecast={gfs} history={precipHistory} />
 
       <InlineRadar lat={loc.lat} lon={loc.lon} />
 
