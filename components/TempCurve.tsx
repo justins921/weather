@@ -50,15 +50,15 @@ export default function TempCurve({ temps, width = 720, height = 80 }: Props) {
     >
       <defs>
         <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#2563eb" stopOpacity="0.18" />
-          <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+          <stop offset="0%" stopColor="var(--temp-curve)" stopOpacity="var(--temp-curve-fill-opacity)" />
+          <stop offset="100%" stopColor="var(--temp-curve)" stopOpacity="0.02" />
         </linearGradient>
       </defs>
       <path d={path.area} fill={`url(#${gid})`} />
       <path
         d={path.line}
         fill="none"
-        stroke="#2563eb"
+        stroke="var(--temp-curve)"
         strokeWidth="2"
         strokeLinecap="round"
         vectorEffect="non-scaling-stroke"

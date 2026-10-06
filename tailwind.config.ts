@@ -11,19 +11,19 @@ const config: Config = {
       colors: {
         bg: {
           light: '#ffffff',
-          dark: '#000000',
+          dark: '#0A0F1E',
         },
         fg: {
           light: '#0a0a0a',
-          dark: '#fafafa',
+          dark: '#F1F5F9',
         },
         card: {
           light: '#f5f5f5',
-          dark: '#1a1a1a',
+          dark: '#131A2E',
         },
         accent: {
           light: '#2563eb',
-          dark: '#60a5fa',
+          dark: '#3B82F6',
         },
       },
       fontFamily: {

@@ -6,6 +6,17 @@
   color-scheme: light dark;
 }
 
+/* Dark mode design tokens (night-sky palette) */
+:root {
+  --temp-curve: #2563eb;
+  --temp-curve-fill-opacity: 0.18;
+}
+.dark {
+  color-scheme: dark;
+  --temp-curve: #3b82f6;
+  --temp-curve-fill-opacity: 0.3;
+}
+
 html,
 body {
   height: 100%;
@@ -25,6 +36,12 @@ body {
 body {
   background-color: #ffffff;
   color: #111827;
+}
+
+/* Night-sky dark mode body */
+.dark body {
+  background-color: #0a0f1e;
+  color: #f1f5f9;
 }
 
 /* Hero temperature — thin, elegant, the centerpiece */
@@ -87,6 +104,56 @@ body {
 .dot-poor { background-color: #f97316; }
 .dot-bad { background-color: #ef4444; }
 
+/* ---- Dark mode: premium night-sky theme ----
+   Class-based (.dark on <html>), matches Tailwind darkMode: 'class'.
+   Deep navy background, elevated card surfaces, white hero text. */
+
+/* Hero temperature — glowing white centerpiece */
+.dark .temp-hero {
+  color: #ffffff;
+  text-shadow: 0 0 48px rgba(147, 197, 253, 0.15);
+}
+
+/* Cards — night-sky surface with subtle border */
+.dark .card {
+  background: #131a2e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 12px 32px -16px rgba(0, 0, 0, 0.5);
+}
+
+/* Section labels */
+.dark .section-label {
+  color: #94a3b8;
+}
+
+/* Stat grid */
+.dark .stat-label {
+  color: #64748b;
+}
+.dark .stat-value {
+  color: #ffffff;
+}
+.dark .stat-sub {
+  color: #94a3b8;
+}
+
+/* Playability dots — subtle glow so they pop on dark */
+.dark .dot-excellent,
+.dark .dot-good,
+.dark .dot-moderate,
+.dark .dot-poor,
+.dark .dot-bad {
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
+}
+
+/* Fallback: OS-level dark preference before the .dark class boots */
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #0a0f1e;
+    color: #f1f5f9;
+  }
+}
+
 /* Hide scrollbar for hour strip */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
@@ -101,19 +168,4 @@ body {
   width: 100%;
   height: 100%;
   background: transparent;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000000;
-    color: #f9fafb;
-  }
-  .temp-hero { color: #f9fafb; }
-  .card {
-    background: #111111;
-    border-color: rgba(255, 255, 255, 0.06);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
-  .stat-value { color: #f9fafb; }
-  .section-label { color: #9ca3af; }
 }
