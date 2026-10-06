@@ -156,15 +156,14 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
         zoomControl={false}
         attributionControl={false}
       >
-        {/* Base map: CartoDB Positron. tile.openstreetmap.org occasionally
-            returns a "Zoom Level Not Supported" placeholder when its
-            usage policy heuristics trip — switching to CartoDB's CDN
-            avoids that and is more permissive for app traffic. They
-            request attribution to OSM + CARTO. */}
+        {/* Base map: Esri World Light Gray. Previously used CartoDB's
+            basemaps.cartocdn.com, but Carto now requires an API key and
+            renders "API KEY REQUIRED" watermarks without one. Esri's
+            Canvas service is free, keyless, and matches the light aesthetic.
+            Attribution: Esri + OSM. */}
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png"
-          subdomains="abcd"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attribution">CARTO</a>'
+          url="https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+          attribution='&copy; <a href="https://www.esri.com/">Esri</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           maxZoom={20}
         />
         {/* Preload all radar frames; only the active one is visible. */}
