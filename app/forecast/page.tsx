@@ -107,7 +107,7 @@ export default function ForecastPage() {
   if (!loc) {
     return (
       <div className="px-4 pt-6">
-        <h1 className="text-2xl font-bold">Forecast</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Forecast</h1>
         <p className="mt-4 text-sm text-fg-light/60 dark:text-fg-dark/60">
           Pick a location from the <Link className="underline" href="/">Locations</Link> tab to see
           its forecast.
@@ -119,7 +119,7 @@ export default function ForecastPage() {
   if (!gfs) {
     return (
       <div className="px-4 pt-6">
-        <h1 className="text-2xl font-bold">{loc.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{loc.name}</h1>
         <p className="mt-4 text-sm text-fg-light/60 dark:text-fg-dark/60">Loading…</p>
       </div>
     );
@@ -176,7 +176,7 @@ export default function ForecastPage() {
   return (
     <div className="space-y-5 px-4 pt-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{loc.name}</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">{loc.name}</h1>
         <button
           onClick={share}
           className="rounded-full bg-card-light px-3 py-1 text-xs dark:bg-card-dark"
@@ -197,7 +197,7 @@ export default function ForecastPage() {
           subline. The "what's coming" sentence is folded in here so the
           old standalone Coming Up section can go away. */}
       <section>
-        <div className="font-serif text-2xl font-bold tracking-tight">Right now</div>
+        <div className="text-xl font-semibold tracking-tight">Right now</div>
         <div className="mt-1 text-base">
           {rightNowSentence(gfs, obs)} {comingUpSentence(gfs, alerts)}
         </div>
@@ -217,14 +217,14 @@ export default function ForecastPage() {
             Nearby stations ↗
           </a>
         </div>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="text-6xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</div>
-          <div>
-            <div className="text-7xl font-semibold leading-none">{fmtTemp(displayFeels)}</div>
-            <div className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">
-              Actual {fmtTemp(displayTemp)}
-            </div>
-          </div>
+        <div className="mt-2 flex items-start justify-center">
+          <div className="temp-hero">{fmtTemp(displayFeels)}</div>
+          <span className="mt-6 text-4xl" aria-hidden>
+            {weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}
+          </span>
+        </div>
+        <div className="mt-1 text-center text-[15px] text-fg-light/60 dark:text-fg-dark/60">
+          Actual {fmtTemp(displayTemp)}
         </div>
         <div className="mt-3">
           <RightNowDetail
@@ -270,7 +270,7 @@ export default function ForecastPage() {
       <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
 
       <section>
-        <div className="font-serif text-2xl font-bold tracking-tight">Next 24 Hours</div>
+        <div className="text-xl font-semibold tracking-tight">Next 24 Hours</div>
         <div className="mt-3">
           <Next24HoursChart primary={gfs} ensemble={ensemble} />
         </div>

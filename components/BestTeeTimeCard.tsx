@@ -52,7 +52,7 @@ export default function BestTeeTimeCard({ forecast }: Props) {
       <div className="section-label">
         ⛳ Best Tee Time Today
       </div>
-      <div className="mt-2 font-serif text-3xl font-bold tracking-tight">
+      <div className="mt-2 text-3xl font-semibold tracking-tight">
         {teeTime.startLabel} – {teeTime.endLabel}
       </div>
       <div className="mt-2 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white" style={{ background: badge.color }}>

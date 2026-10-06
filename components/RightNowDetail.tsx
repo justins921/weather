@@ -197,14 +197,10 @@ function Tile({
   sub: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl bg-card-light p-3 text-center dark:bg-card-dark">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-fg-light/55 dark:text-fg-dark/55">
-        {label}
-      </div>
-      <div className="mt-1 text-base font-semibold leading-tight">{value}</div>
-      <div className="mt-0.5 text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-        {sub}
-      </div>
+    <div className="stat-cell rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value leading-tight">{value}</div>
+      <div className="stat-sub">{sub}</div>
     </div>
   );
 }
