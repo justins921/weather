@@ -10,14 +10,10 @@ type Props = {
 
 export default function MetricCard({ label, value, sub, footer }: Props) {
   return (
-    <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-        {label}
-      </div>
-      <div className="mt-1 text-xl font-semibold">{value}</div>
-      {sub && (
-        <div className="mt-1 text-xs text-fg-light/60 dark:text-fg-dark/60">{sub}</div>
-      )}
+    <div className="card p-5 text-center">
+      <div className="stat-label">{label}</div>
+      <div className="stat-value mt-1.5">{value}</div>
+      {sub && <div className="stat-sub mt-0.5">{sub}</div>}
       {footer}
     </div>
   );

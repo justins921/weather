@@ -206,7 +206,7 @@ export default function SettingsPage() {
 function SourceRow({ source, health }: { source: Source; health: HealthStatus | null }) {
   const status = sourceStatus(source, health);
   return (
-    <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+    <div className="card p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <a
@@ -274,7 +274,7 @@ function StatusPill({ kind, children }: { kind: StatusKind; children: React.Reac
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-card-light px-4 py-3 dark:bg-card-dark">
+    <div className="flex items-center justify-between card px-4 py-3 dark:bg-card-dark">
       <span className="text-sm font-medium">{label}</span>
       {children}
     </div>

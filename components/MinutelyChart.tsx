@@ -35,8 +35,8 @@ export default function MinutelyChart({ minutely, timezone }: Props) {
   const max = Math.max(0.05, ...precip);
 
   return (
-    <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+    <section className="card p-5">
+      <div className="section-label">
         Next 6 hours
       </div>
       <div className="mt-1 text-base">{headline}</div>

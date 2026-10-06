@@ -168,10 +168,10 @@ export default function LocationSearch({ onAdd }: Props) {
           onBlur={() => {
             if (mode === 'course') runCourseSearch();
           }}
-          className="w-full rounded-2xl bg-card-light px-4 py-3 text-base outline-none focus:ring-2 focus:ring-accent-light dark:bg-card-dark dark:focus:ring-accent-dark"
+          className="w-full card px-4 py-3 text-base outline-none focus:ring-2 focus:ring-accent-light dark:focus:ring-accent-dark"
         />
         {!showCoords && cityResults.length > 0 && mode === 'city' && (
-          <ul className="absolute z-10 mt-1 w-full overflow-hidden rounded-2xl bg-card-light shadow-lg dark:bg-card-dark">
+          <ul className="absolute z-10 mt-1 w-full overflow-hidden card shadow-lg">
             {cityResults.map((r) => (
               <li key={r.id}>
                 <button
@@ -192,7 +192,7 @@ export default function LocationSearch({ onAdd }: Props) {
           </ul>
         )}
         {!showCoords && mode === 'course' && (isSearching || courseError || courseResults.length > 0 || showCourseEmpty) && (
-          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-2xl bg-card-light shadow-lg dark:bg-card-dark">
+          <div className="absolute z-10 mt-1 w-full overflow-hidden card shadow-lg">
             {isSearching && (
               <div className="flex items-center gap-2 px-4 py-3 text-sm text-fg-light/60 dark:text-fg-dark/60">
                 <Spinner /> Searching…

@@ -22,8 +22,8 @@ const config: Config = {
           dark: '#1a1a1a',
         },
         accent: {
-          light: '#22c55e',
-          dark: '#4ade80',
+          light: '#2563eb',
+          dark: '#60a5fa',
         },
       },
       fontFamily: {

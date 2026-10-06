@@ -32,10 +32,10 @@ export default function SunsetCheckWidget({ forecast }: Props) {
 
   return (
     <section
-      className="rounded-2xl bg-card-light p-4 dark:bg-card-dark"
+      className="card p-5"
       style={{ borderLeft: `4px solid ${accent}` }}
     >
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+      <div className="section-label">
         ⏱ Can I tee off now?
       </div>
       <p className="mt-2 text-sm">{data.check.message}</p>

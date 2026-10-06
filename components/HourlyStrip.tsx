@@ -1,4 +1,5 @@
 import HourCell from './HourCell';
+import TempCurve from './TempCurve';
 import type { Forecast } from '@/lib/types';
 
 type Props = {
@@ -19,11 +20,12 @@ export default function HourlyStrip({ forecast }: Props) {
   const idx = Array.from({ length: end - start }, (_, i) => start + i);
 
   return (
-    <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
-        Next 48 hours
+    <section className="card p-5">
+      <div className="flex items-baseline justify-between">
+        <div className="section-label">Hourly Forecast</div>
+        <div className="text-xs font-medium text-accent-light dark:text-accent-dark">Next 48 hours</div>
       </div>
-      <div className="no-scrollbar -mx-4 mt-2 flex gap-1.5 overflow-x-auto px-4">
+      <div className="no-scrollbar -mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5">
         {idx.map((i) => (
           <HourCell
             key={h.time[i]}
@@ -42,6 +44,9 @@ export default function HourlyStrip({ forecast }: Props) {
             dewPoint={h.dew_point_2m[i]}
           />
         ))}
+      </div>
+      <div className="mt-2">
+        <TempCurve temps={idx.map((i) => h.temperature_2m[i])} />
       </div>
     </section>
   );

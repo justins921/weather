@@ -34,7 +34,7 @@ export default function ForecastDiscussion({ lat, lon }: Props) {
   if (sections.length === 0) return null;
 
   return (
-    <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+    <section className="card p-5">
       <button
         type="button"
         onClick={() => setOpen((s) => !s)}
@@ -65,7 +65,7 @@ export default function ForecastDiscussion({ lat, lon }: Props) {
 function Section({ section }: { section: AFDSection }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/60 dark:text-fg-dark/60">
+      <div className="section-label">
         {section.heading}
       </div>
       <p className="mt-1 whitespace-pre-line text-[13px] text-fg-light/80 dark:text-fg-dark/80">

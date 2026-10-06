@@ -105,9 +105,9 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
         }
       }}
     >
-      <h2 className="flex min-w-0 items-center gap-1 text-lg font-semibold">
+      <h2 className="flex min-w-0 items-center gap-1.5 text-base font-medium tracking-tight">
         {loc.isCurrent && (
-          <span aria-label="Current location" title="Current location">
+          <span aria-label="Current location" title="Current location" className="text-sm">
             📍
           </span>
         )}
@@ -138,7 +138,7 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   // Error state (renders header so the user can still collapse/remove).
   if (err) {
     return (
-      <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+      <div className="card p-5">
         {header}
         <div className="mt-2 text-sm text-red-500">{err}</div>
       </div>
@@ -148,7 +148,7 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   // Loading state.
   if (!data) {
     return (
-      <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+      <div className="card p-5">
         {header}
         <div className="mt-2 text-sm text-fg-light/50 dark:text-fg-dark/50">Loading…</div>
       </div>
@@ -184,33 +184,32 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
   });
 
   // Compact summary row — visible whether collapsed or expanded.
-  // Mirrors /forecast: feels-like is the headline number, raw temp is
-  // the subline.
+  // Hero temperature display: big, thin, elegant per the clean minimal design.
   const summary = (
-    <div className="mt-2 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <span className="text-3xl">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</span>
-        <div>
-          <div className="text-2xl font-semibold leading-none">{fmtTemp(displayFeels)}</div>
-          <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            Actual {fmtTemp(displayTemp)}
-          </div>
-        </div>
+    <div className="mt-1">
+      <div className="flex items-start justify-center gap-2">
+        <span className="text-5xl mt-4">{weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}</span>
+        <div className="temp-hero">{fmtTemp(displayFeels)}</div>
       </div>
-      <span
-        className="inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-white"
-        style={{ background: score.color }}
-      >
-        <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label} · {score.score}
-      </span>
+      <div className="mt-1 text-center text-sm text-fg-light/60 dark:text-fg-dark/60">
+        Feels like {fmtTemp(displayFeels)} · Actual {fmtTemp(displayTemp)}
+      </div>
+      <div className="mt-3 flex justify-center">
+        <span
+          className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold text-white"
+          style={{ background: score.color }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-white/90" /> {score.label} · {score.score}
+        </span>
+      </div>
     </div>
   );
 
   return (
-    <div className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+    <div className="card p-5">
       {header}
       {alerts.length > 0 && (
-        <div className="mt-2">
+        <div className="mt-3">
           <AlertsBanner alerts={alerts} compact={!expanded} />
         </div>
       )}

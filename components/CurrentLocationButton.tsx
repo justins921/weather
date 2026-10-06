@@ -46,7 +46,7 @@ export default function CurrentLocationButton({ onSet, hasCurrent }: Props) {
         type="button"
         onClick={request}
         disabled={pending}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-card-light py-3 text-sm font-medium hover:bg-black/5 disabled:opacity-60 dark:bg-card-dark dark:hover:bg-white/5"
+        className="flex w-full items-center justify-center gap-2 card py-3 text-sm font-medium hover:bg-black/[0.03] disabled:opacity-60 dark:hover:bg-white/[0.04]"
       >
         <span className="text-base">📍</span>
         {pending

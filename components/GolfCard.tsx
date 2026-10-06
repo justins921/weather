@@ -46,11 +46,11 @@ export default function GolfCard({
 
   const wrapper = compact
     ? 'rounded-xl bg-black/5 p-3 dark:bg-white/5'
-    : 'rounded-2xl bg-card-light p-4 dark:bg-card-dark';
+    : 'card p-5';
 
   return (
     <section className={wrapper}>
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+      <div className="section-label">
         Golf
       </div>
       <div className="mt-1 divide-y divide-black/10 dark:divide-white/10">

@@ -63,9 +63,9 @@ export default function PollenCard({ pollen, timezone }: Props) {
   const advice = adviceFor(pollen, timezone);
 
   return (
-    <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
+    <section className="card p-5">
       <div className="flex items-center justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+        <div className="section-label">
           Pollen
         </div>
         <span aria-hidden>🌾</span>

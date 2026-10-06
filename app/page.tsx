@@ -71,8 +71,11 @@ export default function LocationsPage() {
   const allExpanded = locations.length > 0 && locations.every((l) => expanded.has(l.id));
 
   return (
-    <div className="px-4 pt-6">
-      <h1 className="text-2xl font-bold">Locations</h1>
+    <div className="px-5 pt-8">
+      <h1 className="text-[1.75rem] font-semibold tracking-tight">Golf Weather</h1>
+      <p className="mt-1 text-sm text-fg-light/60 dark:text-fg-dark/60">
+        Weather, tuned for whether you should play.
+      </p>
       <div className="mt-4 space-y-2">
         <CurrentLocationButton
           hasCurrent={hasCurrent}
@@ -107,7 +110,7 @@ export default function LocationsPage() {
           />
         ))}
         {locations.length === 0 && (
-          <div className="rounded-2xl bg-card-light p-6 text-center text-sm text-fg-light/60 dark:bg-card-dark dark:text-fg-dark/60">
+          <div className="card p-6 text-center text-sm text-fg-light/60 dark:bg-card-dark dark:text-fg-dark/60">
             No locations yet. Search above to add one.
           </div>
         )}

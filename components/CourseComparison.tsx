@@ -77,12 +77,12 @@ export default function CourseComparison({ locations }: Props) {
   const anyViable = sorted.some((r) => r.teeTime !== null);
   if (!anyViable && forecasts.size === locations.length) {
     return (
-      <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+      <section className="card p-5">
+        <div className="section-label">
           Where should I play today?
         </div>
         <p className="mt-2 text-sm text-fg-light/70 dark:text-fg-dark/70">
-          No good golf windows at any of your courses today. Check back tomorrow.
+          No good windows at any of your courses today. Check back tomorrow.
         </p>
       </section>
     );
@@ -99,46 +99,42 @@ export default function CourseComparison({ locations }: Props) {
   const hidden = anyViable ? sorted.filter((r) => r.teeTime === null) : [];
 
   return (
-    <section className="rounded-2xl bg-card-light p-4 dark:bg-card-dark">
-      <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+    <section className="card p-5">
+      <div className="section-label">
         Where should I play today?
       </div>
-      <ul className="mt-2 divide-y divide-black/10 dark:divide-white/10">
+      <ul className="mt-3 space-y-3">
         {visible.map((r, i) => (
           <li key={r.loc.id}>
             <button
               type="button"
               onClick={() => pick(r.loc)}
-              className="flex w-full items-center justify-between gap-3 py-2 text-left"
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-black/5 p-3 text-left transition-colors hover:bg-black/[0.02] dark:border-white/5 dark:hover:bg-white/[0.03]"
             >
-              <span className="flex min-w-0 items-center gap-2">
-                {i === 0 && r.teeTime && !r.teeTime.isPartial && (
-                  <span aria-label="Best pick">⭐</span>
-                )}
-                <span className="truncate text-sm font-medium">{r.loc.name}</span>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${dotClass(r.teeTime?.avgScore)}`}
+                  aria-hidden
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium">{r.loc.name}</span>
+                  {r.teeTime && (
+                    <span className="block text-xs text-fg-light/60 dark:text-fg-dark/60">
+                      {r.teeTime.startLabel} – {r.teeTime.endLabel}
+                    </span>
+                  )}
+                </span>
               </span>
               {r.teeTime ? (
                 <span className="flex shrink-0 items-center gap-2">
-                  <span className="text-xs text-fg-light/70 dark:text-fg-dark/70">
-                    {r.teeTime.startLabel} – {r.teeTime.endLabel}
-                  </span>
-                  <span
-                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold text-white"
-                    style={{ background: badgeColor(r.teeTime.avgScore) }}
-                  >
-                    <span className="h-1 w-1 rounded-full bg-white/90" />
+                  {i === 0 && !r.teeTime.isPartial && (
+                    <span className="text-[11px] font-medium text-accent-light dark:text-accent-dark">
+                      Best pick
+                    </span>
+                  )}
+                  <span className="text-xs font-semibold tabular-nums">
                     {r.teeTime.avgScore}
                   </span>
-                  {i === 0 && !r.teeTime.isPartial && (
-                    <span className="text-[10px] font-semibold uppercase text-accent-light dark:text-accent-dark">
-                      Best
-                    </span>
-                  )}
-                  {r.teeTime.isPartial && (
-                    <span className="text-[10px] font-semibold uppercase text-yellow-600 dark:text-yellow-400">
-                      Partial
-                    </span>
-                  )}
                 </span>
               ) : null}
             </button>
@@ -146,7 +142,7 @@ export default function CourseComparison({ locations }: Props) {
         ))}
       </ul>
       {hidden.length > 0 && (
-        <p className="mt-2 text-[11px] text-fg-light/50 dark:text-fg-dark/50">
+        <p className="mt-3 text-[11px] text-fg-light/50 dark:text-fg-dark/50">
           No window at: {hidden.map((r) => r.loc.name).join(', ')}.
         </p>
       )}
@@ -161,10 +157,11 @@ function rank(r: Row): number {
   return tierBonus + r.teeTime.avgScore;
 }
 
-function badgeColor(score: number): string {
-  if (score >= 80) return '#22c55e';
-  if (score >= 60) return '#84cc16';
-  if (score >= 40) return '#eab308';
-  if (score >= 20) return '#f97316';
-  return '#ef4444';
+function dotClass(score: number | undefined): string {
+  if (score === undefined) return 'dot-moderate';
+  if (score >= 80) return 'dot-excellent';
+  if (score >= 60) return 'dot-good';
+  if (score >= 40) return 'dot-moderate';
+  if (score >= 20) return 'dot-poor';
+  return 'dot-bad';
 }

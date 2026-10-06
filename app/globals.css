@@ -12,25 +12,80 @@ body {
   font-family:
     -apple-system,
     BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
+    'SF Pro Display',
+    'SF Pro Text',
     'Helvetica Neue',
     Arial,
     sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 body {
   background-color: #ffffff;
-  color: #0a0a0a;
+  color: #111827;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #000000;
-    color: #fafafa;
-  }
+/* Hero temperature — thin, elegant, the centerpiece */
+.temp-hero {
+  font-size: clamp(6rem, 28vw, 10rem);
+  font-weight: 200;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  color: #111827;
 }
+
+/* Small caps section labels */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+/* Refined card — white, subtle shadow, generous radius */
+.card {
+  background: #ffffff;
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 24px -12px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+/* Stat grid cell */
+.stat-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 1.25rem 1rem;
+  text-align: center;
+}
+.stat-label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #9ca3af;
+}
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: #111827;
+}
+.stat-sub {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+/* Playability dot colors */
+.dot-excellent { background-color: #22c55e; }
+.dot-good { background-color: #84cc16; }
+.dot-moderate { background-color: #eab308; }
+.dot-poor { background-color: #f97316; }
+.dot-bad { background-color: #ef4444; }
 
 /* Hide scrollbar for hour strip */
 .no-scrollbar::-webkit-scrollbar {
@@ -46,4 +101,19 @@ body {
   width: 100%;
   height: 100%;
   background: transparent;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #000000;
+    color: #f9fafb;
+  }
+  .temp-hero { color: #f9fafb; }
+  .card {
+    background: #111111;
+    border-color: rgba(255, 255, 255, 0.06);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  .stat-value { color: #f9fafb; }
+  .section-label { color: #9ca3af; }
 }

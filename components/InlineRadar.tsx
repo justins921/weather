@@ -14,7 +14,7 @@ export default function InlineRadar({ lat, lon }: Props) {
   return (
     <section>
       <div className="mb-2 flex items-center justify-between">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-fg-light/50 dark:text-fg-dark/50">
+        <div className="section-label">
           Radar
         </div>
         <Link href="/radar" className="text-xs text-accent-light dark:text-accent-dark">
