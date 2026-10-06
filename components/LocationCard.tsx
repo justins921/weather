@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { MapPinIcon } from './icons';
 import { fetchForecast } from '@/lib/api';
 import { fetchAlerts, type Alert } from '@/lib/alerts';
 // AQ is still fetched (silently) so the Wear advice can use pollen as a
@@ -107,8 +108,8 @@ export default function LocationCard({ loc, expanded, onToggleExpand, onRemove }
     >
       <h2 className="flex min-w-0 items-center gap-1.5 text-base font-medium tracking-tight">
         {loc.isCurrent && (
-          <span aria-label="Current location" title="Current location" className="text-sm">
-            📍
+          <span aria-label="Current location" title="Current location">
+            <MapPinIcon size={14} />
           </span>
         )}
         <span className="truncate">{loc.name}</span>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { alertColor, alertEmoji, type Alert } from '@/lib/alerts';
+import { alertColor, alertIcon, type Alert } from '@/lib/alerts';
+import { IconFor } from './icons';
 
 type Props = {
   alerts: Alert[];
@@ -44,7 +45,7 @@ function AlertCard({ alert: a, compact }: { alert: Alert; compact: boolean }) {
     >
       <div className={`flex items-start justify-between gap-2 ${titleSize} font-semibold`}>
         <span className="flex items-start gap-2">
-          <span className="leading-tight">{alertEmoji(a.event)}</span>
+          <span className="leading-tight"><IconFor icon={alertIcon(a.event)} size={16} /></span>
           <span>{a.event}</span>
         </span>
         {!compact && a.expiresAt && (

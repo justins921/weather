@@ -1,6 +1,7 @@
 'use client';
 
 import { NWS_HEADERS } from './nws';
+import type { IconKey } from '@/components/icons';
 
 // NWS Active Alerts — National Weather Service, US-only, no key.
 // Endpoint returns watches/warnings/advisories near a coordinate; non-US
@@ -105,18 +106,18 @@ export function isHighSeverity(s: Alert['severity']): boolean {
   return s === 'Severe' || s === 'Extreme';
 }
 
-export function alertEmoji(event: string): string {
+export function alertIcon(event: string): IconKey {
   const e = event.toLowerCase();
-  if (e.includes('tornado')) return '🌪️';
-  if (e.includes('thunderstorm')) return '⛈️';
-  if (e.includes('flood')) return '🌊';
-  if (e.includes('heat')) return '🥵';
-  if (e.includes('hurricane') || e.includes('tropical')) return '🌀';
-  if (e.includes('wind')) return '💨';
-  if (e.includes('blizzard') || e.includes('snow') || e.includes('winter')) return '❄️';
-  if (e.includes('fog')) return '🌫️';
-  if (e.includes('fire')) return '🔥';
-  if (e.includes('dust')) return '🏜️';
-  if (e.includes('freeze') || e.includes('frost')) return '🥶';
-  return '⚠️';
+  if (e.includes('tornado')) return 'tornado';
+  if (e.includes('thunderstorm')) return 'zap';
+  if (e.includes('flood')) return 'waves';
+  if (e.includes('heat')) return 'thermometer-sun';
+  if (e.includes('hurricane') || e.includes('tropical')) return 'wind';
+  if (e.includes('wind')) return 'wind';
+  if (e.includes('blizzard') || e.includes('snow') || e.includes('winter')) return 'snowflake';
+  if (e.includes('fog')) return 'cloud-fog';
+  if (e.includes('fire')) return 'flame';
+  if (e.includes('dust')) return 'wind';
+  if (e.includes('freeze') || e.includes('frost')) return 'snowflake';
+  return 'alert-triangle';
 }

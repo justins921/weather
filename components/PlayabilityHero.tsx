@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { findBestTeeTime } from '@/lib/bestWindow';
 import { computeHourlyPlayability, type PlayabilityResult } from '@/lib/playability';
 import type { Forecast } from '@/lib/types';
+import { FlagIcon } from './icons';
 
 type Props = {
   forecast: Forecast;
@@ -69,9 +70,7 @@ export default function PlayabilityHero({ forecast, score, windSpeed }: Props) {
             {headline}
           </div>
           <div className="mt-1 flex items-center gap-2 text-sm">
-            <span className="text-accent-light dark:text-accent-dark" aria-hidden>
-              ⛳
-            </span>
+            <FlagIcon size={16} className="text-accent-light dark:text-accent-dark" />
             {teeTime ? (
               <span>
                 Best tee time today{' '}

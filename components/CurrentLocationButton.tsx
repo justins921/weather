@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { reverseGeocode } from '@/lib/api';
 import { setCurrentLocation, setSelectedId, CURRENT_LOCATION_ID } from '@/lib/locations';
 import type { Location } from '@/lib/types';
+import { MapPinIcon } from './icons';
 
 type Props = {
   onSet: (locations: Location[]) => void;
@@ -48,7 +49,7 @@ export default function CurrentLocationButton({ onSet, hasCurrent }: Props) {
         disabled={pending}
         className="flex w-full items-center justify-center gap-2 card py-3 text-sm font-medium hover:bg-black/[0.03] disabled:opacity-60 dark:hover:bg-white/[0.04]"
       >
-        <span className="text-base">📍</span>
+        <MapPinIcon size={16} />
         {pending
           ? 'Getting your location…'
           : hasCurrent

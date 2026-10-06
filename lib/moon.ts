@@ -8,8 +8,10 @@
 
 export type MoonPhase = {
   name: string;
+  /** @deprecated Use phase with MoonPhaseIcon instead. */
   emoji: string;
   illumination: number; // 0–100, percent of disc illuminated
+  phase: number; // 0–1 cycle position; 0 = new, 0.5 = full
 };
 
 const NEW_MOON_REF_MS = Date.UTC(2000, 0, 6, 18, 14, 0);
@@ -58,5 +60,5 @@ export function moonPhase(date: Date = new Date()): MoonPhase {
   // Illumination follows a cosine of the cycle position: 0 at new moon,
   // 1 at full moon, 0 again at the next new moon.
   const illumination = Math.round(((1 - Math.cos(2 * Math.PI * phase)) / 2) * 100);
-  return { name, emoji, illumination };
+  return { name, emoji, illumination, phase };
 }

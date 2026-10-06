@@ -2,12 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import {
+  MapPinIcon,
+  BarChartIcon,
+  RadarIcon,
+  SettingsIcon,
+} from './icons';
 
 const TABS = [
-  { href: '/', label: 'Locations', icon: '📍' },
-  { href: '/forecast', label: 'Forecast', icon: '📊' },
-  { href: '/radar', label: 'Radar', icon: '🌐' },
-  { href: '/settings', label: 'Settings', icon: '⚙️' },
+  { href: '/', label: 'Locations', Icon: MapPinIcon },
+  { href: '/forecast', label: 'Forecast', Icon: BarChartIcon },
+  { href: '/radar', label: 'Radar', Icon: RadarIcon },
+  { href: '/settings', label: 'Settings', Icon: SettingsIcon },
 ];
 
 export default function BottomNav() {
@@ -27,7 +33,7 @@ export default function BottomNav() {
                   : 'text-gray-400 dark:text-gray-500'
               }`}
             >
-              <span className="text-xl leading-none">{t.icon}</span>
+              <span className="leading-none"><t.Icon size={22} /></span>
               <span>{t.label}</span>
             </Link>
           );

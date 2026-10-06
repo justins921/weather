@@ -48,7 +48,7 @@ export function comingUpSentence(f: Forecast, alerts: Alert[] = []): string {
     const until = expires
       ? ` until ${new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: f.timezone }).format(new Date(expires)).toLowerCase().replace(' ', '')}`
       : '';
-    return `⚠️ ${top.event}${until}. ${base}`;
+    return `${top.event}${until}. ${base}`;
   }
   return base;
 }

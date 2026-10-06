@@ -6,6 +6,7 @@ import { playability } from '@/lib/playability';
 import type { Forecast } from '@/lib/types';
 import { wearAdvice } from '@/lib/wear';
 import { pollenSummary } from './PollenCard';
+import { IconFor } from './icons';
 
 type Props = {
   forecast: Forecast;
@@ -69,7 +70,7 @@ export default function WearAdvicePanel({ forecast, pollen }: Props) {
         </div>
       </div>
       <div className="mt-2 flex items-start gap-3">
-        <span className="text-2xl leading-none">{advice.emoji}</span>
+        <span className="text-accent-light dark:text-accent-dark"><IconFor icon={advice.icon} size={28} /></span>
         <div className="text-sm leading-snug">
           <span className="font-semibold">{advice.headline}</span>{' '}
           <span className="text-fg-light/80 dark:text-fg-dark/80">{advice.detail}</span>

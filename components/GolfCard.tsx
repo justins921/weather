@@ -9,6 +9,7 @@ import {
 import { clubsForWind, formatClubs } from '@/lib/clubWind';
 import { courseConditions } from '@/lib/courseConditions';
 import type { PlayabilityResult } from '@/lib/playability';
+import { IconFor, TargetIcon, WindIcon, type IconKey } from './icons';
 
 type Props = {
   playability: PlayabilityResult;
@@ -65,7 +66,7 @@ export default function GolfCard({
         </Row>
         {course && (
           <Row label="Course" hint={course.hint}>
-            <span className="text-sm font-semibold">{courseEmoji(course.level)} {course.label}</span>
+            <span className="inline-flex items-center gap-1.5 text-sm font-semibold"><IconFor icon={courseIcon(course.level)} size={14} /> {course.label}</span>
           </Row>
         )}
         {!skipClubs && (
@@ -75,10 +76,11 @@ export default function GolfCard({
         )}
         <Row label="Air Density" hint={reason}>
           <span
-            className="text-sm font-semibold"
+            className="inline-flex items-center gap-1.5 text-sm font-semibold"
             style={ydsColor ? { color: ydsColor } : undefined}
           >
-            🎯 {playsLabel(yards)}
+            <TargetIcon size={14} />
+            {playsLabel(yards)}
           </span>
         </Row>
       </div>
@@ -86,11 +88,11 @@ export default function GolfCard({
   );
 }
 
-function courseEmoji(level: 'firm' | 'normal' | 'soft' | 'saturated'): string {
-  if (level === 'saturated') return '🌊';
-  if (level === 'soft') return '💧';
-  if (level === 'firm') return '🔥';
-  return '🟢';
+function courseIcon(level: 'firm' | 'normal' | 'soft' | 'saturated'): IconKey {
+  if (level === 'saturated') return 'waves';
+  if (level === 'soft') return 'droplet';
+  if (level === 'firm') return 'flame';
+  return 'check';
 }
 
 function Row({
@@ -119,14 +121,14 @@ function ClubReadout({ sustained, peak }: { sustained: number; peak: number }) {
   if (sustained === 0 && peak > 0) {
     return (
       <span className="text-sm font-semibold">
-        🏌️ Calm + gusts to {formatClubs(peak).toLowerCase()}
+        Calm + gusts to {formatClubs(peak).toLowerCase()}
       </span>
     );
   }
   const sustainedLabel = adjectival(formatClubs(sustained));
   return (
     <div>
-      <div className="text-sm font-semibold">🏌️ {sustainedLabel} wind</div>
+      <div className="inline-flex items-center gap-1.5 text-sm font-semibold"><WindIcon size={14} /> {sustainedLabel} wind</div>
       {peak !== sustained && (
         <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
           Gusts to {formatClubs(peak).toLowerCase()}

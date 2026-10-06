@@ -2,6 +2,8 @@
 // Pick a base outfit by apparent temp, then layer modifiers
 // (wind, rain, glove logic, sun, humidity, pollen) into the detail.
 
+import type { IconKey } from '@/components/icons';
+
 export type WearInputs = {
   apparent_temp: number;
   wind_speed: number;
@@ -16,7 +18,7 @@ export type WearInputs = {
 };
 
 export type WearAdvice = {
-  emoji: string;
+  icon: IconKey;
   headline: string;
   detail: string;
 };
@@ -25,36 +27,36 @@ export function wearAdvice(i: WearInputs): WearAdvice {
   const t = i.apparent_temp;
 
   // Base layers, sized to apparent temp.
-  let emoji = '☀️';
+  let icon: IconKey = 'sun';
   let headline = 'Perfect golf weather.';
   let base = 'Polo and shorts.';
 
   if (t < 35) {
-    emoji = '🥶';
+    icon = 'snowflake';
     headline = 'Bundle up.';
     base = 'Thermal base layer, sweater or hoodie, golf pants, beanie, winter gloves between shots.';
   } else if (t < 50) {
-    emoji = '🧥';
+    icon = 'jacket';
     headline = 'Layer up.';
     base = 'Long sleeve base layer, quarter-zip or vest, pants, beanie or warm hat.';
   } else if (t < 60) {
-    emoji = '🧥';
+    icon = 'jacket';
     headline = 'Cool round.';
     base = 'Long sleeve, light quarter-zip or vest, pants.';
   } else if (t < 67) {
-    emoji = '🌤️';
+    icon = 'cloud-sun';
     headline = 'Light layers.';
     base = 'Long sleeve or polo with a light pullover you can shed, pants or joggers.';
   } else if (t < 80) {
-    emoji = '☀️';
+    icon = 'sun';
     headline = 'Perfect golf weather.';
     base = 'Polo and shorts.';
   } else if (t < 88) {
-    emoji = '😎';
+    icon = 'glasses';
     headline = 'Warm one.';
     base = 'Lightweight polo, shorts, hat.';
   } else {
-    emoji = '🥵';
+    icon = 'thermometer-sun';
     headline = 'Hot round.';
     base = 'Lightweight breathable polo, shorts, hat, plenty of water.';
   }
@@ -105,14 +107,14 @@ export function wearAdvice(i: WearInputs): WearAdvice {
   }
 
   const detail = [base, ...extras].join(' ');
-  return { emoji, headline, detail };
+  return { icon, headline, detail };
 }
 
 /*
 Sanity check (computed from this implementation):
 
 T-A: 46°F apparent, 19mph wind, 32mph gusts, 10% precip, UV 4, 42° dew →
-  emoji: 🧥
+  icon: jacket
   headline: Layer up.
   detail: "Long sleeve base layer, quarter-zip or vest, pants, beanie or
     warm hat. Windbreaker for the gusts. Winter golf gloves between shots,
@@ -123,12 +125,12 @@ T-A: 46°F apparent, 19mph wind, 32mph gusts, 10% precip, UV 4, 42° dew →
   to >= 19.)
 
 T-B: 73°F apparent, 8mph wind, 12mph gusts, 0% precip, UV 7, 60° dew →
-  emoji: ☀️
+  icon: sun
   headline: Perfect golf weather.
   detail: "Polo and shorts. Sunscreen, especially on the back of your neck."
 
 T-C: 90°F apparent, 4mph wind, 6mph gusts, 0% precip, UV 9, 74° dew →
-  emoji: 🥵
+  icon: thermometer-sun
   headline: Hot round.
   detail: "Lightweight breathable polo, shorts, hat, plenty of water.
     Bring a backup glove — the one you start with will be soaked.

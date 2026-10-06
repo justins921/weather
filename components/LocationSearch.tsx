@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { geocode } from '@/lib/api';
 import { searchGolfCourse, type GolfCourseResult } from '@/lib/golfCourseSearch';
 import type { GeocodeResult, Location } from '@/lib/types';
+import { MapPinIcon, FlagIcon } from './icons';
 
 type Props = {
   onAdd: (loc: Omit<Location, 'id'>) => void;
@@ -179,7 +180,7 @@ export default function LocationSearch({ onAdd }: Props) {
                   className="block w-full px-4 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/5"
                 >
                   <div className="flex items-center gap-2 font-medium">
-                    <span aria-hidden>📍</span>
+                    <MapPinIcon size={14} aria-hidden />
                     <span>{r.name}</span>
                   </div>
                   <div className="ml-6 text-xs text-fg-light/60 dark:text-fg-dark/60">
@@ -210,7 +211,7 @@ export default function LocationSearch({ onAdd }: Props) {
                       className="block w-full px-4 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/5"
                     >
                       <div className="flex items-center gap-2 font-medium">
-                        <span aria-hidden>⛳</span>
+                        <FlagIcon size={14} aria-hidden />
                         <span>{r.name}</span>
                       </div>
                       {r.address && (
@@ -251,7 +252,11 @@ export default function LocationSearch({ onAdd }: Props) {
           onClick={() => switchMode(mode === 'course' ? 'city' : 'course')}
           className="text-xs text-accent-light dark:text-accent-dark"
         >
-          {mode === 'course' ? '📍 Search by city or address' : '⛳ Search by golf course name'}
+          {mode === 'course' ? (
+            <span className="inline-flex items-center gap-1"><MapPinIcon size={12} /> Search by city or address</span>
+          ) : (
+            <span className="inline-flex items-center gap-1"><FlagIcon size={12} /> Search by golf course name</span>
+          )}
         </button>
         <button
           type="button"

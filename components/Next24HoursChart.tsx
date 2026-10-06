@@ -12,6 +12,7 @@ import { windArrow, windCardinal } from '@/lib/narrative';
 import { playability, type PlayabilityResult } from '@/lib/playability';
 import type { Forecast } from '@/lib/types';
 import { weatherEmoji } from '@/lib/weatherCodes';
+import { DropletIcon } from './icons';
 
 type Props = {
   primary: Forecast;
@@ -501,11 +502,7 @@ function PrecipView({ probs, times }: { probs: number[]; times: string[] }) {
                 >
                   {Math.round(v)}%
                 </text>
-                {v > 30 && (
-                  <text x={cx} y={cy - 22} fontSize="13" textAnchor="middle">
-                    💧
-                  </text>
-                )}
+
               </>
             )}
           </g>
@@ -874,8 +871,8 @@ function BucketHeader({ buckets }: { buckets: Bucket[] }) {
       {buckets.map((b, i) => (
         <div key={i} className="text-center">
           <div className="text-sm font-semibold">{b.name}</div>
-          <div className="text-[11px] text-fg-light/60 dark:text-fg-dark/60">
-            💧 {Math.round(b.precipPct)}%
+          <div className="inline-flex items-center justify-center gap-1 text-[11px] text-fg-light/60 dark:text-fg-dark/60">
+            <DropletIcon size={10} /> {Math.round(b.precipPct)}%
           </div>
         </div>
       ))}

@@ -12,6 +12,7 @@ import {
 import { dewPointLabel, windCardinal } from '@/lib/narrative';
 import { pressureTrend } from '@/lib/pressureTrend';
 import type { Forecast } from '@/lib/types';
+import { IconFor, type IconKey } from './icons';
 
 type Props = {
   forecast: Forecast;
@@ -76,19 +77,19 @@ export default function OverviewStats({
   return (
     <div className="grid grid-cols-3 gap-2">
       <Tile
-        icon="≋"
+        icon="wind"
         label="Wind"
         value={fmtMph(windSpeed)}
         sub={`${windCardinal(windDir)} · gusts ${fmtMph(windGusts)}`}
       />
       <Tile
-        icon="💧"
+        icon="droplet"
         label="Humidity"
         value={`${Math.round(humidity)}%`}
         sub={humidity < 40 ? 'Dry' : humidity <= 65 ? 'Comfortable' : 'Humid'}
       />
       <Tile
-        icon="☀️"
+        icon="sun"
         label="UV"
         value={`${Math.round(uvMax)}`}
         sub={
@@ -103,37 +104,37 @@ export default function OverviewStats({
         }
       />
       <Tile
-        icon="🌧️"
+        icon="cloud-rain"
         label="Rainfall"
         value={rainDisplay}
         sub="next 24h"
       />
       <Tile
-        icon="🧭"
+        icon="gauge"
         label="Pressure"
         value={pressureNow != null ? `${Math.round(pressureNow)} hPa` : '—'}
         sub={pressureLabel}
       />
       <Tile
-        icon="👁️"
+        icon="eye"
         label="Visibility"
         value={visDisplay}
         sub={visLabel}
       />
       <Tile
-        icon="☁️"
+        icon="cloud"
         label="Cloud Cover"
         value={cloudNow != null ? `${Math.round(cloudNow)}%` : '—'}
         sub={cloudNow == null ? '—' : cloudNow < 25 ? 'Clear' : cloudNow < 60 ? 'Partly cloudy' : 'Overcast'}
       />
       <Tile
-        icon="🌱"
+        icon="sprout"
         label="Turf Temp"
         value={turfF != null ? `${Math.round(turfF)}°F` : '—'}
         sub={turfF == null ? '—' : turfF < 45 ? 'Cold turf' : turfF < 65 ? 'Firm' : 'Soft'}
       />
       <Tile
-        icon="💦"
+        icon="droplet"
         label="Dew Point"
         value={fmtTemp(dewPoint)}
         sub={dewPointLabel(dewPoint)}
@@ -148,15 +149,15 @@ function Tile({
   value,
   sub,
 }: {
-  icon: string;
+  icon: IconKey;
   label: string;
   value: React.ReactNode;
   sub: React.ReactNode;
 }) {
   return (
     <div className="stat-cell rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
-      <div className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>
-        {icon}
+      <div className="text-accent-light dark:text-accent-dark" aria-hidden>
+        <IconFor icon={icon} size={20} />
       </div>
       <div className="stat-label">{label}</div>
       <div className="stat-value leading-tight">{value}</div>

@@ -5,6 +5,7 @@ import { findBestTeeTime } from '@/lib/bestWindow';
 import { computeHourlyPlayability } from '@/lib/playability';
 import { canFinishRound } from '@/lib/sunsetCalc';
 import type { Forecast } from '@/lib/types';
+import { FlagIcon } from './icons';
 
 type Props = {
   forecast: Forecast;
@@ -32,8 +33,8 @@ export default function BestTeeTimeCard({ forecast }: Props) {
   if (!teeTime) {
     return (
       <section className="card p-5">
-        <div className="section-label">
-          ⛳ Best Tee Time Today
+        <div className="section-label flex items-center gap-1.5">
+          <FlagIcon size={13} /> Best Tee Time Today
         </div>
         <p className="mt-2 text-sm text-fg-light/70 dark:text-fg-dark/70">
           No good golf window in the next 24 hours. Check back tomorrow.
@@ -49,8 +50,8 @@ export default function BestTeeTimeCard({ forecast }: Props) {
     <section
       className={`card p-5 ${partialAccent}`}
     >
-      <div className="section-label">
-        ⛳ Best Tee Time Today
+      <div className="section-label flex items-center gap-1.5">
+        <FlagIcon size={13} /> Best Tee Time Today
       </div>
       <div className="mt-2 text-3xl font-semibold tracking-tight">
         {teeTime.startLabel} – {teeTime.endLabel}

@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Marker, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { fetchRainViewer } from '@/lib/api';
 import type { RainViewerData, RainViewerFrame } from '@/lib/types';
+import { CloudRainIcon, SnowflakeIcon, CloudIcon, MapPinIcon, LayersIcon, RefreshCwIcon } from './icons';
 
 type Props = {
   lat: number;
@@ -231,7 +232,7 @@ function Legend({ layer }: { layer: LayerKind }) {
         {(layer === 'radar' || layer === 'both') && (
           <>
             <div className="flex items-center gap-1.5">
-              <span>🌧️</span>
+              <CloudRainIcon size={12} />
               <span>Light</span>
               <div
                 className="h-1.5 w-12 rounded-full"
@@ -244,7 +245,7 @@ function Legend({ layer }: { layer: LayerKind }) {
             </div>
             <div className="h-3 w-px bg-black/20 dark:bg-white/20" />
             <div className="flex items-center gap-1.5">
-              <span>❄️</span>
+              <SnowflakeIcon size={12} />
               <span>Light</span>
               <div
                 className="h-1.5 w-10 rounded-full"
@@ -258,7 +259,7 @@ function Legend({ layer }: { layer: LayerKind }) {
           <>
             {layer === 'both' && <div className="h-3 w-px bg-black/20 dark:bg-white/20" />}
             <div className="flex items-center gap-1.5">
-              <span>☁️</span>
+              <CloudIcon size={12} />
               <span>Thin</span>
               <div
                 className="h-1.5 w-10 rounded-full"
@@ -292,18 +293,18 @@ function ControlStack({
   return (
     <div className="absolute right-3 top-16 z-[400] flex flex-col items-center gap-2">
       <button onClick={onLocate} className={btn} aria-label="Recenter">
-        📍
+        <MapPinIcon size={20} />
       </button>
       <div className="flex flex-col items-center">
         <button onClick={onCycleLayer} className={btn} aria-label={`Layer: ${LAYER_LABEL[layer]}`}>
-          📚
+          <LayersIcon size={20} />
         </button>
         <span className="mt-1 rounded bg-white/90 px-1.5 py-0.5 text-[9px] font-semibold text-black shadow dark:bg-black/80 dark:text-white">
           {LAYER_LABEL[layer]}
         </span>
       </div>
       <button onClick={onRefresh} className={btn} aria-label="Refresh">
-        🔄
+        <RefreshCwIcon size={20} />
       </button>
     </div>
   );

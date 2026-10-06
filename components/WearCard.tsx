@@ -5,6 +5,7 @@ import { playability } from '@/lib/playability';
 import type { Forecast } from '@/lib/types';
 import { wearAdvice, type WearInputs } from '@/lib/wear';
 import { pollenSummary } from './PollenCard';
+import { IconFor, ShirtIcon, type IconKey } from './icons';
 import type { PollenForecast } from '@/lib/airQuality';
 
 type Props = {
@@ -70,7 +71,7 @@ export default function WearCard({ forecast, pollen }: Props) {
             className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-light text-lg text-white dark:bg-accent-dark"
             aria-hidden
           >
-            👕
+            <ShirtIcon size={18} />
           </span>
           <span className="text-lg font-semibold tracking-tight">What to Wear</span>
         </div>
@@ -85,8 +86,8 @@ export default function WearCard({ forecast, pollen }: Props) {
             key={item.label}
             className="flex flex-col items-center gap-1 rounded-xl border border-black/[0.06] px-1 py-2 text-center dark:border-white/[0.08]"
           >
-            <span className="text-2xl text-accent-light dark:text-accent-dark" aria-hidden>
-              {item.icon}
+            <span className="text-accent-light dark:text-accent-dark" aria-hidden>
+              <IconFor icon={item.icon} size={24} />
             </span>
             <span className="text-[11px] font-medium leading-tight">{item.label}</span>
           </div>
@@ -107,27 +108,27 @@ export default function WearCard({ forecast, pollen }: Props) {
   );
 }
 
-function itemsFor(i: WearInputs): { icon: string; label: string }[] {
+function itemsFor(i: WearInputs): { icon: IconKey; label: string }[] {
   const t = i.apparent_temp;
-  const items: { icon: string; label: string }[] = [];
+  const items: { icon: IconKey; label: string }[] = [];
 
   // Top
-  if (t < 50) items.push({ icon: '🧥', label: 'Quarter-Zip' });
-  else if (t < 67) items.push({ icon: '👔', label: 'Light Polo' });
-  else items.push({ icon: '👕', label: 'Polo' });
+  if (t < 50) items.push({ icon: 'jacket', label: 'Quarter-Zip' });
+  else if (t < 67) items.push({ icon: 'shirt', label: 'Light Polo' });
+  else items.push({ icon: 'shirt', label: 'Polo' });
 
   // Bottom
-  items.push({ icon: '👖', label: t < 67 ? 'Pants' : 'Shorts' });
+  items.push({ icon: 'pants', label: t < 67 ? 'Pants' : 'Shorts' });
 
   // Sun protection
-  if (i.uv_index >= 3) items.push({ icon: '🕶️', label: 'Sunglasses' });
-  else items.push({ icon: '🧢', label: 'Cap' });
+  if (i.uv_index >= 3) items.push({ icon: 'glasses', label: 'Sunglasses' });
+  else items.push({ icon: 'cap', label: 'Cap' });
 
   // Fourth slot: rain layer, wind layer, or sunscreen
-  if (i.precip_probability >= 30) items.push({ icon: '🧥', label: 'Rain Shell' });
-  else if (i.wind_speed >= 15) items.push({ icon: '💨', label: 'Wind Layer' });
-  else if (i.uv_index >= 6) items.push({ icon: '🧴', label: 'Sunscreen' });
-  else items.push({ icon: '🧤', label: t < 55 ? 'Gloves' : 'Towel' });
+  if (i.precip_probability >= 30) items.push({ icon: 'jacket', label: 'Rain Shell' });
+  else if (i.wind_speed >= 15) items.push({ icon: 'wind', label: 'Wind Layer' });
+  else if (i.uv_index >= 6) items.push({ icon: 'sunscreen', label: 'Sunscreen' });
+  else items.push({ icon: (t < 55 ? 'glove' : 'towel') as IconKey, label: t < 55 ? 'Gloves' : 'Towel' });
 
   return items.slice(0, 4);
 }

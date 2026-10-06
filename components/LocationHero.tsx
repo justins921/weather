@@ -9,6 +9,7 @@ import { computeHourlyPlayability } from '@/lib/playability';
 import { weatherLabel } from '@/lib/weatherCodes';
 import type { Forecast, Location } from '@/lib/types';
 import MetricGraph, { type GraphMetric } from './MetricGraph';
+import { MapPinIcon, WindIcon, DropletIcon, ThermometerIcon } from './icons';
 
 type Props = {
   loc: Location;
@@ -210,7 +211,7 @@ export default function LocationHero({ loc, locations, onSelect, onRemove, onAdd
                     }}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
-                    {l.isCurrent && <span aria-hidden>📍</span>}
+                    {l.isCurrent && <MapPinIcon size={14} aria-hidden />}
                     <span className="truncate">{l.name}</span>
                   </button>
                   {!l.isCurrent && (
@@ -289,21 +290,21 @@ export default function LocationHero({ loc, locations, onSelect, onRemove, onAdd
       {/* 3-column stat strip */}
       <div className="mt-6 grid grid-cols-3 divide-x divide-black/[0.08] dark:divide-white/[0.1]">
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>≋</span>
+          <WindIcon size={20} className="text-accent-light dark:text-accent-dark" />
           <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Wind</span>
           <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
             {displayWind != null ? `${Math.round(displayWind)} mph` : '–'}
           </span>
         </div>
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>💧</span>
+          <DropletIcon size={20} className="text-accent-light dark:text-accent-dark" />
           <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Humidity</span>
           <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
             {displayHumidity != null ? fmtPct(displayHumidity) : '–'}
           </span>
         </div>
         <div className="flex flex-col items-center gap-1 px-2 text-center">
-          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>🌡️</span>
+          <ThermometerIcon size={20} className="text-accent-light dark:text-accent-dark" />
           <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Feels like</span>
           <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
             {fmtTemp(displayFeels)}

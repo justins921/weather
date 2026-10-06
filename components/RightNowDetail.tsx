@@ -12,6 +12,7 @@ import {
   visibilityLabel,
 } from '@/lib/format';
 import { moonPhase } from '@/lib/moon';
+import { MoonPhaseIcon } from './icons';
 import { dewPointLabel, windCardinal } from '@/lib/narrative';
 import { pressureTrend } from '@/lib/pressureTrend';
 import type { Forecast } from '@/lib/types';
@@ -178,7 +179,7 @@ export default function RightNowDetail({
           <Tile label="Visibility" value={visDisplay} sub={visLabel} />
           <Tile
             label="Moon Phase"
-            value={moon.emoji}
+            value={<MoonPhaseIcon phase={moon.phase} size={22} />}
             sub={moon.name}
           />
         </div>
