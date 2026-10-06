@@ -1,19 +1,32 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchForecast } from '@/lib/api';
 import { cachedFetch } from '@/lib/clientCache';
-import { fmtTemp, fmtHourLocal } from '@/lib/format';
-import { windCardinal } from '@/lib/narrative';
+import { fmtMph, fmtPct, fmtTemp, fmtHourLocal } from '@/lib/format';
 import { fetchObservation, isObsRecent, type Observation } from '@/lib/observations';
-import { weatherEmoji, weatherLabel } from '@/lib/weatherCodes';
+import { computeHourlyPlayability } from '@/lib/playability';
+import { weatherLabel } from '@/lib/weatherCodes';
 import type { Forecast, Location } from '@/lib/types';
-import TempCurve from './TempCurve';
+import MetricGraph, { type GraphMetric } from './MetricGraph';
 
 type Props = {
   loc: Location;
+  locations: Location[];
+  onSelect: (id: string) => void;
+  onRemove: (id: string) => void;
+  onAddRequest: () => void;
 };
+
+const METRICS: { key: GraphMetric; label: string }[] = [
+  { key: 'temp', label: 'Temp' },
+  { key: 'feels', label: 'Feels Like' },
+  { key: 'wind', label: 'Wind' },
+  { key: 'precip', label: 'Precip' },
+  { key: 'play', label: 'Playability' },
+];
+
+const METRIC_STORAGE_KEY = 'weather.chartMetric';
 
 function humidityComfort(h: number | undefined | null): string {
   if (h == null) return '';
@@ -23,10 +36,12 @@ function humidityComfort(h: number | undefined | null): string {
   return 'Very humid';
 }
 
-export default function LocationHero({ loc }: Props) {
-  const router = useRouter();
+export default function LocationHero({ loc, locations, onSelect, onRemove, onAddRequest }: Props) {
   const [data, setData] = useState<Forecast | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [metric, setMetric] = useState<GraphMetric>('temp');
+  const pickerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,6 +64,33 @@ export default function LocationHero({ loc }: Props) {
     };
   }, [loc.lat, loc.lon]);
 
+  // Hydrate metric preference (shared with the forecast page chart).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem(METRIC_STORAGE_KEY);
+    if (stored && METRICS.some((m) => m.key === stored)) {
+      setMetric(stored as GraphMetric);
+    }
+  }, []);
+
+  // Close picker on outside click.
+  useEffect(() => {
+    function onClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClick);
+    return () => document.removeEventListener('mousedown', onClick);
+  }, []);
+
+  const selectMetric = (m: GraphMetric) => {
+    setMetric(m);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(METRIC_STORAGE_KEY, m);
+    }
+  };
+
   const hours = useMemo(() => {
     if (!data) return [];
     const h = data.hourly;
@@ -63,6 +105,14 @@ export default function LocationHero({ loc }: Props) {
     const end = Math.min(h.time.length, start + 24);
     return Array.from({ length: end - start }, (_, i) => start + i);
   }, [data]);
+
+  const playScores = useMemo(() => {
+    if (!data) return [];
+    const scores = computeHourlyPlayability(data, 24);
+    // Align to the same hour window as `hours`.
+    const byTime = new Map(scores.map((s) => [s.time, s.score]));
+    return hours.map((i) => byTime.get(data.hourly.time[i]) ?? 0);
+  }, [data, hours]);
 
   if (!data) {
     return (
@@ -86,86 +136,179 @@ export default function LocationHero({ loc }: Props) {
   const displayHumidity =
     obsFresh && obs?.humidity != null ? obs.humidity : c.relative_humidity_2m;
 
-  const high = data.daily.temperature_2m_max?.[0];
-  const low = data.daily.temperature_2m_min?.[0];
   const condition = weatherLabel(c.weather_code, c.cloud_cover);
+
+  // Metric data for the graph.
+  const metricData: Record<GraphMetric, { values: number[]; format: (v: number) => string }> = {
+    temp: {
+      values: hours.map((i) => h.temperature_2m[i]),
+      format: (v) => fmtTemp(v),
+    },
+    feels: {
+      values: hours.map((i) => h.apparent_temperature[i]),
+      format: (v) => fmtTemp(v),
+    },
+    wind: {
+      values: hours.map((i) => h.wind_speed_10m[i]),
+      format: (v) => `${Math.round(v)}`,
+    },
+    precip: {
+      values: hours.map((i) => h.precipitation_probability[i] ?? 0),
+      format: (v) => `${Math.round(v)}%`,
+    },
+    play: {
+      values: playScores,
+      format: (v) => `${Math.round(v)}`,
+    },
+  };
+
+  const active = metricData[metric];
+  const hourLabels = hours.map((i) => fmtHourLocal(h.time[i], data.timezone));
 
   return (
     <div>
-      {/* Hero temperature */}
-      <div className="mt-2 flex items-start justify-center">
-        <div className="temp-hero">{fmtTemp(displayFeels)}</div>
-        <span className="mt-6 text-4xl" aria-hidden>
-          {weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}
-        </span>
-      </div>
-      <div className="mt-1 text-center text-[15px] text-fg-light/60 dark:text-fg-dark/60">
-        {condition}
-        {high != null && low != null && (
-          <span>
-            {' '}· {fmtTemp(low)} / {fmtTemp(high)}
-          </span>
-        )}
-      </div>
-
-      {/* Thin divider */}
-      <div className="mx-auto mt-5 h-px w-24 bg-black/10 dark:bg-white/10" />
-
-      {/* Stat grid */}
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <div className="stat-cell rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
-          <span className="text-2xl" aria-hidden>≋</span>
-          <span className="stat-label">Wind</span>
-          <span className="stat-value">{displayWind != null ? `${Math.round(displayWind)} mph` : '–'}</span>
-          <span className="stat-sub">{windCardinal(c.wind_direction_10m ?? 0)}</span>
-        </div>
-        <div className="stat-cell rounded-2xl border border-black/[0.06] dark:border-white/[0.08]">
-          <span className="text-2xl" aria-hidden>💧</span>
-          <span className="stat-label">Humidity</span>
-          <span className="stat-value">
-            {displayHumidity != null ? `${Math.round(displayHumidity)}%` : '–'}
-          </span>
-          <span className="stat-sub">{humidityComfort(displayHumidity)}</span>
-        </div>
-      </div>
-
-      {/* Hourly forecast */}
-      <div className="mt-8 flex items-baseline justify-between">
-        <h2 className="text-xl font-semibold tracking-tight">Hourly Forecast</h2>
-        <button
-          onClick={() => router.push('/forecast')}
-          className="text-[15px] font-medium text-accent-light dark:text-accent-dark"
-        >
-          Now
-        </button>
-      </div>
-      <div className="mt-3 rounded-2xl bg-slate-50 p-4 dark:bg-white/[0.04]">
-        <div className="no-scrollbar -mx-1 flex gap-4 overflow-x-auto px-1">
-          {hours.map((i, idx) => (
-            <div key={h.time[i]} className="flex w-12 shrink-0 flex-col items-center gap-1">
-              <div className="text-xs font-medium text-fg-light/70 dark:text-fg-dark/70">
-                {idx === 0 ? 'Now' : fmtHourLocal(h.time[i], data.timezone)}
+      {/* Compact header: location picker left, temp right */}
+      <div className="flex items-center justify-between">
+        <div className="relative" ref={pickerRef}>
+          <button
+            onClick={() => setPickerOpen((v) => !v)}
+            className="flex items-center gap-1.5 text-left"
+            aria-haspopup="listbox"
+            aria-expanded={pickerOpen}
+          >
+            <span className="text-3xl font-extralight tracking-tight text-fg-light dark:text-fg-dark">
+              {loc.name}
+            </span>
+            <span
+              className="text-lg text-fg-light/50 transition-transform dark:text-fg-dark/50"
+              style={{ transform: pickerOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}
+              aria-hidden
+            >
+              ⌄
+            </span>
+          </button>
+          {pickerOpen && (
+            <div
+              role="listbox"
+              className="card absolute left-0 top-full z-20 mt-2 w-64 overflow-hidden py-1"
+            >
+              {locations.map((l) => (
+                <div
+                  key={l.id}
+                  role="option"
+                  aria-selected={l.id === loc.id}
+                  className={`flex items-center justify-between px-4 py-2.5 text-[15px] ${
+                    l.id === loc.id
+                      ? 'font-semibold text-accent-light dark:text-accent-dark'
+                      : ''
+                  }`}
+                >
+                  <button
+                    onClick={() => {
+                      onSelect(l.id);
+                      setPickerOpen(false);
+                    }}
+                    className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                  >
+                    {l.isCurrent && <span aria-hidden>📍</span>}
+                    <span className="truncate">{l.name}</span>
+                  </button>
+                  {!l.isCurrent && (
+                    <button
+                      onClick={() => onRemove(l.id)}
+                      className="ml-2 px-1 text-fg-light/40 hover:text-fg-light/80 dark:text-fg-dark/40 dark:hover:text-fg-dark/80"
+                      aria-label={`Remove ${l.name}`}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              <div className="border-t border-black/[0.06] dark:border-white/[0.08]">
+                <button
+                  onClick={() => {
+                    setPickerOpen(false);
+                    onAddRequest();
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-[15px] text-accent-light dark:text-accent-dark"
+                >
+                  <span aria-hidden>+</span> Add location
+                </button>
               </div>
-              <div className="text-[15px] font-semibold tabular-nums">
-                {fmtTemp(h.temperature_2m[i])}
-              </div>
-              <div className="text-lg leading-none" aria-hidden>
-                {weatherEmoji(h.weather_code[i], h.cloud_cover[i], h.is_day?.[i] ?? 1)}
-              </div>
-              {idx === 1 && (
-                <div className="h-1.5 w-1.5 rounded-full bg-accent-light dark:bg-accent-dark" />
-              )}
             </div>
-          ))}
+          )}
         </div>
-        <div className="mt-1">
-          <TempCurve temps={hours.map((i) => h.temperature_2m[i])} height={64} />
+        <div
+          className="text-5xl font-extralight tracking-tight text-fg-light dark:text-fg-dark"
+          aria-label={`Current temperature ${fmtTemp(displayTemp)}`}
+        >
+          {fmtTemp(displayTemp)}
         </div>
       </div>
 
-      {/* Feels-like subline for context */}
-      <div className="mt-3 text-center text-xs text-fg-light/50 dark:text-fg-dark/50">
-        Feels like {fmtTemp(displayFeels)} · Actual {fmtTemp(displayTemp)}
+      {/* Graph card */}
+      <div className="card mt-4 p-5">
+        <div className="text-base font-semibold text-accent-light dark:text-accent-dark">
+          Today
+        </div>
+        <div className="mt-0.5 text-[15px] text-fg-light/60 dark:text-fg-dark/60">
+          {fmtTemp(displayTemp)} · {condition}
+        </div>
+        <div className="mt-3">
+          <MetricGraph
+            values={active.values}
+            hourLabels={hourLabels}
+            formatValue={active.format}
+            playabilityMode={metric === 'play'}
+          />
+        </div>
+        {/* Metric selector pills */}
+        <div className="no-scrollbar -mx-1 mt-2 flex gap-2 overflow-x-auto px-1" role="tablist" aria-label="Graph metric">
+          {METRICS.map((m) => {
+            const isActive = m.key === metric;
+            return (
+              <button
+                key={m.key}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => selectMetric(m.key)}
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                  isActive
+                    ? 'border-transparent bg-accent-light text-white dark:bg-accent-dark'
+                    : 'border-accent-light text-accent-light dark:border-accent-dark dark:text-accent-dark'
+                }`}
+              >
+                {m.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 3-column stat strip */}
+      <div className="mt-6 grid grid-cols-3 divide-x divide-black/[0.08] dark:divide-white/[0.1]">
+        <div className="flex flex-col items-center gap-1 px-2 text-center">
+          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>≋</span>
+          <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Wind</span>
+          <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
+            {displayWind != null ? `${Math.round(displayWind)} mph` : '–'}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 px-2 text-center">
+          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>💧</span>
+          <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Humidity</span>
+          <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
+            {displayHumidity != null ? fmtPct(displayHumidity) : '–'}
+          </span>
+        </div>
+        <div className="flex flex-col items-center gap-1 px-2 text-center">
+          <span className="text-xl text-accent-light dark:text-accent-dark" aria-hidden>🌡️</span>
+          <span className="text-sm text-fg-light/60 dark:text-fg-dark/60">Feels like</span>
+          <span className="text-lg font-medium tabular-nums text-fg-light dark:text-fg-dark">
+            {fmtTemp(displayFeels)}
+          </span>
+        </div>
       </div>
     </div>
   );
