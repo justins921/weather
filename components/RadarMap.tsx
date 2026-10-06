@@ -147,11 +147,9 @@ export default function RadarMap({ lat, lon, zoom = 8, height = '100%', full = f
         zoom={zoom}
         // RainViewer tiles only exist roughly in the 0–10 range; clamp
         // the map's zoom range so Leaflet never sits at a level where
-        // tiles can't be served. Going past 10 would pixel-stretch the
-        // last native tile (handled below via maxNativeZoom on the
-        // overlay TileLayers).
+        // tiles can't be served.
         minZoom={3}
-        maxZoom={12}
+        maxZoom={10}
         className="h-full w-full"
         zoomControl={false}
         attributionControl={false}

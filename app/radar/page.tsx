@@ -28,7 +28,7 @@ export default function RadarPage() {
   return (
     <div className="fixed inset-x-0 top-0 bottom-16 px-2 pt-2">
       <div className="mx-auto h-full max-w-3xl">
-        <RadarMap lat={loc.lat} lon={loc.lon} zoom={8} full height="100%" />
+        <RadarMap lat={loc.lat} lon={loc.lon} zoom={7} full height="100%" />
       </div>
     </div>
   );
