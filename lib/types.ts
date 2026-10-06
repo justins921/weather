@@ -38,6 +38,7 @@ export type HourlyBlock = {
   uv_index: number[];
   surface_pressure: number[];
   soil_moisture_0_to_10cm?: number[];
+  soil_temperature_0cm?: number[];
   is_day?: number[];
   visibility?: number[]; // meters
 };

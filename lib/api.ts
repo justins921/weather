@@ -36,6 +36,7 @@ const HOURLY_VARS = [
   'uv_index',
   'surface_pressure',
   'soil_moisture_0_to_10cm',
+  'soil_temperature_0cm',
   'is_day',
   'visibility',
 ].join(',');

@@ -7,12 +7,14 @@ import HourlyStrip from '@/components/HourlyStrip';
 import Next24HoursChart from '@/components/Next24HoursChart';
 import RainStory from '@/components/RainStory';
 import WearAdvicePanel from '@/components/WearAdvicePanel';
+import WearCard from '@/components/WearCard';
 import InlineRadar from '@/components/InlineRadar';
 import AlertsBanner from '@/components/AlertsBanner';
 import BestTeeTimeCard from '@/components/BestTeeTimeCard';
 import SunsetCheckWidget from '@/components/SunsetCheckWidget';
 import GolfCard from '@/components/GolfCard';
-import RightNowDetail from '@/components/RightNowDetail';
+import PlayabilityHero from '@/components/PlayabilityHero';
+import OverviewStats from '@/components/OverviewStats';
 import MinutelyChart from '@/components/MinutelyChart';
 import WeeklyForecast from '@/components/WeeklyForecast';
 import { fetchForecast, fetchPrecipHistory, type PrecipHistory } from '@/lib/api';
@@ -27,7 +29,16 @@ import { getSelectedLocation, setLocationElevation } from '@/lib/locations';
 import { comingUpSentence, rightNowSentence } from '@/lib/narrative';
 import { playability } from '@/lib/playability';
 import type { Forecast, Location } from '@/lib/types';
-import { weatherEmoji } from '@/lib/weatherCodes';
+import { weatherEmoji, weatherLabel } from '@/lib/weatherCodes';
+
+type Tab = 'overview' | 'hourly' | 'daily' | 'golf';
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'hourly', label: 'Hourly' },
+  { key: 'daily', label: 'Daily' },
+  { key: 'golf', label: 'Golf' },
+];
 
 export default function ForecastPage() {
   const [loc, setLoc] = useState<Location | null>(null);
@@ -40,14 +51,13 @@ export default function ForecastPage() {
   const [airQuality, setAirQuality] = useState<AirQualityReading | null>(null);
   const [obs, setObs] = useState<Observation | null>(null);
   const [precipHistory, setPrecipHistory] = useState<PrecipHistory | null>(null);
+  const [tab, setTab] = useState<Tab>('overview');
 
   useEffect(() => {
     const sel = getSelectedLocation();
     setLoc(sel);
     if (!sel) return;
     let cancelled = false;
-    // Single-model deterministic forecast for everything except the chart's
-    // confidence band (playability, wear, club wind, hourly strip, etc.).
     cachedFetch(`fc:${sel.lat},${sel.lon}`, 10 * 60 * 1000, () =>
       fetchForecast(sel.lat, sel.lon, 'gfs_seamless'),
     )
@@ -59,9 +69,6 @@ export default function ForecastPage() {
         }
       })
       .catch(() => {});
-    // Ensemble — only used to draw the p10–p90 confidence band on the
-    // 24-hour chart and to derive a confidence note for the Coming Up
-    // summary sentence.
     cachedFetch(`ens:${sel.lat},${sel.lon}`, 30 * 60 * 1000, () =>
       fetchEnsemble(sel.lat, sel.lon),
     )
@@ -90,8 +97,6 @@ export default function ForecastPage() {
         if (!cancelled) setAirQuality(aq);
       })
       .catch(() => {});
-    // Past-7-day precip totals for the Rain Story card. 1-hour cache since
-    // daily totals only meaningfully change at midnight.
     cachedFetch(`ph:${sel.lat},${sel.lon}`, 60 * 60 * 1000, () =>
       fetchPrecipHistory(sel.lat, sel.lon),
     )
@@ -126,7 +131,6 @@ export default function ForecastPage() {
   }
 
   const c = gfs.current;
-  // Prefer NWS observations when fresh — measured beats modelled.
   const obsFresh = isObsRecent(obs);
   const displayTemp = obsFresh && obs?.temperature_f != null ? obs.temperature_f : c.temperature_2m;
   const displayFeels =
@@ -155,6 +159,7 @@ export default function ForecastPage() {
   });
 
   const todayUv = gfs.daily.uv_index_max[0];
+  const condition = weatherLabel(c.weather_code, c.cloud_cover);
 
   function share() {
     const url = window.location.href;
@@ -165,142 +170,166 @@ export default function ForecastPage() {
     }
   }
 
-  // Conditional Next-6-hours card. Only render when there's actually
-  // measurable precip in the next 24 fifteen-minute slots — otherwise
-  // it's a flat zero chart taking up space.
   const minutely = gfs.minutely_15;
   const expectingPrecip = !!minutely?.precipitation
     ?.slice(0, 24)
     .some((p) => typeof p === 'number' && p > 0.005);
 
   return (
-    <div className="space-y-5 px-4 pt-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{loc.name}</h1>
-        <button
-          onClick={share}
-          className="rounded-full bg-card-light px-3 py-1 text-xs dark:bg-card-dark"
-          aria-label="Share"
-        >
-          ↗ Share
-        </button>
+    <div className="pb-6">
+      {/* Sticky compact header */}
+      <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-bg-light/90 backdrop-blur dark:border-white/[0.08] dark:bg-bg-dark/90">
+        <div className="flex items-center justify-between px-4 py-3">
+          <Link
+            href="/"
+            className="text-xl text-accent-light dark:text-accent-dark"
+            aria-label="Back to locations"
+          >
+            ‹
+          </Link>
+          <h1 className="truncate text-lg font-semibold tracking-tight">
+            {loc.name}{' '}
+            <span className="font-normal text-fg-light/50 dark:text-fg-dark/50">
+              {fmtTemp(displayFeels)}
+            </span>
+          </h1>
+          <button
+            onClick={share}
+            className="text-accent-light dark:text-accent-dark"
+            aria-label="More options"
+          >
+            <span className="text-xl tracking-widest" aria-hidden>
+              •••
+            </span>
+          </button>
+        </div>
+        {/* Tab bar */}
+        <nav className="flex px-4" role="tablist" aria-label="Forecast sections">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              role="tab"
+              aria-selected={tab === t.key}
+              onClick={() => setTab(t.key)}
+              className={`flex-1 border-b-2 pb-2 text-[15px] ${
+                tab === t.key
+                  ? 'border-accent-light font-semibold text-accent-light dark:border-accent-dark dark:text-accent-dark'
+                  : 'border-transparent text-fg-light/50 dark:text-fg-dark/50'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {alerts.length > 0 && <AlertsBanner alerts={alerts} />}
+      <div className="px-4 pt-4">
+        {alerts.length > 0 && (
+          <div className="mb-4">
+            <AlertsBanner alerts={alerts} />
+          </div>
+        )}
 
-      {/* "Can I tee off now?" — auto-hidden in the morning and when the
-          sunset finish is comfortable. Lives at the top because when it
-          DOES show it's the most actionable thing on the page. */}
-      <SunsetCheckWidget forecast={gfs} />
+        {tab === 'overview' && (
+          <div className="space-y-5">
+            {/* Hero temp */}
+            <section>
+              <div className="flex items-start justify-center">
+                <div className="temp-hero">{fmtTemp(displayFeels)}</div>
+                <span className="mt-6 text-4xl" aria-hidden>
+                  {weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}
+                </span>
+              </div>
+              <div className="mt-1 text-center text-[15px] text-fg-light/60 dark:text-fg-dark/60">
+                {condition} · Feels like {fmtTemp(displayFeels)}
+              </div>
+              <div className="mt-1 text-center text-xs text-fg-light/50 dark:text-fg-dark/50">
+                {rightNowSentence(gfs, obs)} {comingUpSentence(gfs, alerts)}
+              </div>
+              <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
+                {obsFresh && obs && (
+                  <span>
+                    Measured at {obs.sourceName ?? obs.stationId}
+                    {obsSourceLabel(obs)} · {fmtObsTime(obs.observedAt)}
+                  </span>
+                )}
+                <a
+                  href={`https://www.wunderground.com/wundermap?lat=${loc.lat}&lon=${loc.lon}&zoom=11&pws=1`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-light dark:text-accent-dark"
+                >
+                  Nearby stations ↗
+                </a>
+              </div>
+            </section>
 
-      {/* RIGHT NOW — feels-like is the headline number; raw temp is the
-          subline. The "what's coming" sentence is folded in here so the
-          old standalone Coming Up section can go away. */}
-      <section>
-        <div className="text-xl font-semibold tracking-tight">Right now</div>
-        <div className="mt-1 text-base">
-          {rightNowSentence(gfs, obs)} {comingUpSentence(gfs, alerts)}
-        </div>
-        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-fg-light/40 dark:text-fg-dark/40">
-          {obsFresh && obs && (
-            <span>
-              Measured at {obs.sourceName ?? obs.stationId}
-              {obsSourceLabel(obs)} · {fmtObsTime(obs.observedAt)}
-            </span>
-          )}
-          <a
-            href={`https://www.wunderground.com/wundermap?lat=${loc.lat}&lon=${loc.lon}&zoom=11&pws=1`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-accent-light dark:text-accent-dark"
-          >
-            Nearby stations ↗
-          </a>
-        </div>
-        <div className="mt-2 flex items-start justify-center">
-          <div className="temp-hero">{fmtTemp(displayFeels)}</div>
-          <span className="mt-6 text-4xl" aria-hidden>
-            {weatherEmoji(c.weather_code, c.cloud_cover, c.is_day ?? 1)}
-          </span>
-        </div>
-        <div className="mt-1 text-center text-[15px] text-fg-light/60 dark:text-fg-dark/60">
-          Actual {fmtTemp(displayTemp)}
-        </div>
-        <div className="mt-3">
-          <RightNowDetail
-            forecast={gfs}
-            windSpeed={displayWind}
-            windDir={displayWindDir}
-            windGusts={displayGusts}
-            humidity={displayHumidity}
-            dewPoint={displayDew}
-            highF={gfs.daily.temperature_2m_max[0]}
-            lowF={gfs.daily.temperature_2m_min[0]}
-            uvMax={todayUv}
-            airQuality={airQuality}
-          />
-        </div>
-      </section>
+            <PlayabilityHero forecast={gfs} score={score} windSpeed={displayWind} />
 
-      {/* Best Tee Time — the prime slot. Single most-actionable answer
-          on the page: when to tee off today. */}
-      <BestTeeTimeCard forecast={gfs} />
+            <OverviewStats
+              forecast={gfs}
+              windSpeed={displayWind}
+              windDir={displayWindDir}
+              windGusts={displayGusts}
+              humidity={displayHumidity}
+              dewPoint={displayDew}
+              uvMax={todayUv}
+              airQuality={airQuality}
+            />
 
-      {/* Conditional: only when precip is actually expected in the window. */}
-      {expectingPrecip && minutely && (
-        <MinutelyChart minutely={minutely} timezone={gfs.timezone} />
-      )}
+            <WearCard forecast={gfs} pollen={airQuality?.pollen ?? null} />
 
-      {/* Golf — playability + club wind + air density, all in one card. */}
-      <GolfCard
-        playability={score}
-        windSpeed={displayWind}
-        gusts={displayGusts}
-        airInputs={{
-          apparent_temp_f: displayFeels,
-          elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
-          surface_pressure_hpa: currentSurfacePressure(gfs),
-          relative_humidity: displayHumidity,
-        }}
-        soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
-      />
+            <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
 
-      <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
+            <InlineRadar lat={loc.lat} lon={loc.lon} />
+          </div>
+        )}
 
-      <PollenCard pollen={airQuality?.pollen ?? null} timezone={gfs.timezone} />
+        {tab === 'hourly' && (
+          <div className="space-y-5">
+            <section>
+              <div className="text-xl font-semibold tracking-tight">Next 24 Hours</div>
+              <div className="mt-3">
+                <Next24HoursChart primary={gfs} ensemble={ensemble} />
+              </div>
+            </section>
+            {expectingPrecip && minutely && (
+              <MinutelyChart minutely={minutely} timezone={gfs.timezone} />
+            )}
+            <HourlyStrip forecast={gfs} />
+          </div>
+        )}
 
-      <section>
-        <div className="text-xl font-semibold tracking-tight">Next 24 Hours</div>
-        <div className="mt-3">
-          <Next24HoursChart primary={gfs} ensemble={ensemble} />
-        </div>
-      </section>
+        {tab === 'daily' && (
+          <div className="space-y-5">
+            <WeeklyForecast forecast={gfs} />
+            <RainStory forecast={gfs} history={precipHistory} />
+            <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
+          </div>
+        )}
 
-      <HourlyStrip forecast={gfs} />
-
-      <WeeklyForecast forecast={gfs} />
-
-      <RainStory forecast={gfs} history={precipHistory} />
-
-      <InlineRadar lat={loc.lat} lon={loc.lon} />
-
-      <ForecastDiscussion lat={loc.lat} lon={loc.lon} />
+        {tab === 'golf' && (
+          <div className="space-y-5">
+            <SunsetCheckWidget forecast={gfs} />
+            <BestTeeTimeCard forecast={gfs} />
+            <GolfCard
+              playability={score}
+              windSpeed={displayWind}
+              gusts={displayGusts}
+              airInputs={{
+                apparent_temp_f: displayFeels,
+                elevation_ft: loc.elevation_ft ?? Math.round(gfs.elevation * 3.28084),
+                surface_pressure_hpa: currentSurfacePressure(gfs),
+                relative_humidity: displayHumidity,
+              }}
+              soilMoisture={currentHourlyValue(gfs, 'soil_moisture_0_to_10cm')}
+            />
+            <WearAdvicePanel forecast={gfs} pollen={airQuality?.pollen ?? null} />
+          </div>
+        )}
+      </div>
     </div>
   );
-}
-
-function fmtObsTime(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
-    .format(new Date(iso))
-    .toLowerCase()
-    .replace(' ', '');
-}
-
-function obsSourceLabel(obs: Observation): string {
-  const parts: string[] = [];
-  if (obs.network) parts.push(obs.network);
-  if (typeof obs.distanceKm === 'number') parts.push(`${obs.distanceKm.toFixed(1)}km`);
-  return parts.length ? ` (${parts.join(', ')})` : '';
 }
 
 function currentHourlyValue<K extends keyof Forecast['hourly']>(
@@ -320,11 +349,21 @@ function currentHourlyValue<K extends keyof Forecast['hourly']>(
   return arr[idx] as number | undefined;
 }
 
-function currentSurfacePressure(f: Forecast): number {
-  // Find the hourly index closest to (and not after) "now" and read its
-  // surface_pressure. Open-Meteo includes past_hours in the array, so the
-  // first entry may be 6 hours ago — we still want the current bucket.
-  const nowMs = Date.now();
+function fmtObsTime(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit' })
+    .format(new Date(iso))
+    .toLowerCase()
+    .replace(' ', '');
+}
+
+function obsSourceLabel(obs: Observation): string {
+  const parts: string[] = [];
+  if (obs.network) parts.push(obs.network);
+  if (typeof obs.distanceKm === 'number') parts.push(`${obs.distanceKm.toFixed(1)}km`);
+  return parts.length ? ` (${parts.join(', ')})` : '';
+}
+
+function currentSurfacePressure(f: Forecast): number {  const nowMs = Date.now();
   let idx = 0;
   for (let i = 0; i < f.hourly.time.length; i++) {
     if (new Date(f.hourly.time[i]).getTime() >= nowMs) {
@@ -334,4 +373,3 @@ function currentSurfacePressure(f: Forecast): number {
   }
   return f.hourly.surface_pressure?.[idx] ?? 1013;
 }
-

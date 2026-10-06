@@ -17,7 +17,7 @@ export default function RadarPage() {
   if (!loc) {
     return (
       <div className="px-4 pt-6">
-        <h1 className="text-2xl font-bold">Radar</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Radar</h1>
         <p className="mt-4 text-sm text-fg-light/60 dark:text-fg-dark/60">
           Pick a location first.
         </p>
